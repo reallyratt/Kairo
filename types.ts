@@ -15,10 +15,16 @@ export interface TNote {
   updatedAt: string; // ISO String
 }
 
+export interface TCalendarCategory {
+  id: string;
+  name: string;
+}
+
 export interface TCalendar {
   id: string;
   name: string;
   color: string;
+  categoryId?: string;
 }
 
 export interface TEvent {
@@ -49,6 +55,8 @@ export interface TTask {
   dueDate?: string; // ISO 8601
   completed: boolean;
   urgency?: Urgency;
+  createdAt: string; // ISO String
+  updatedAt: string; // ISO String
 }
 
 export enum HabitType {
