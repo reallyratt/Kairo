@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Modal from './Modal';
-import { TTask, Urgency } from '../types';
+import { TTask, Urgency, TCalendar, TCalendarCategory } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { COLORS } from '../constants';
 import CustomSelect from './CustomSelect';
@@ -17,8 +17,9 @@ interface TaskFormModalProps {
 }
 
 const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
-  const { events, calendars } = useAppContext();
+  const { events, calendars, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
   const [formData, setFormData] = useState<Partial<TTask>>({});
+  const [syncCalendarId, setSyncCalendarId] = useState<string | null>(null);
 
   const isEditing = !!initialData?.id;
 
@@ -35,8 +36,11 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
         ...initialData
       };
       setFormData(data);
+
+      const eventForTask = data.eventId ? events.find(e => e.id === data.eventId) : null;
+      setSyncCalendarId(eventForTask ? eventForTask.calendarId : null);
     }
-  }, [isOpen, initialData, calendars]);
+  }, [isOpen, initialData, calendars, events]);
 
   const handleChange = (field: keyof Omit<TTask, 'id' | 'calendarId' | 'completed'>, value: string | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -54,11 +58,60 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
     }
   }
 
-  const calendarEvents = formData.calendarId ? events.filter(e => e.calendarId === formData.calendarId) : [];
-  const eventOptions = [
-    { value: 'none', label: 'No Event' },
-    ...calendarEvents.map(e => ({ value: e.id, label: e.name }))
-  ];
+  const syncCalendarOptions = useMemo(() => {
+    const options: any[] = [];
+    const userCalendars = calendars.filter(c => c.id !== 'overview');
+    
+    const sortedCalendars = calendarOrder
+        .map(id => userCalendars.find(c => c.id === id))
+        .filter((c): c is TCalendar => !!c);
+    
+    const categorized = new Map<string, TCalendar[]>();
+    const uncategorized: TCalendar[] = [];
+
+    sortedCalendars.forEach(cal => {
+        if (cal.categoryId && calendarCategories.find(cat => cat.id === cal.categoryId)) {
+            if (!categorized.has(cal.categoryId)) {
+                categorized.set(cal.categoryId, []);
+            }
+            categorized.get(cal.categoryId)!.push(cal);
+        } else {
+            uncategorized.push(cal);
+        }
+    });
+    
+    uncategorized.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+    
+    if (uncategorized.length > 0 && categorized.size > 0) {
+        options.push({ isHeader: true, label: ' ' }); 
+    }
+
+    calendarCategoryOrder.forEach(catId => {
+        const cat = calendarCategories.find(c => c.id === catId);
+        if (cat) {
+            const cals = categorized.get(cat.id);
+            if (cals && cals.length > 0) {
+                options.push({ isHeader: true, label: cat.name });
+                cals.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+            }
+        }
+    });
+
+    return options;
+  }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
+
+
+  const calendarEvents = syncCalendarId && formData.dueDate
+    ? events.filter(e => e.calendarId === syncCalendarId && e.date === formData.dueDate)
+    : [];
+    
+  const eventOptions = !syncCalendarId
+    ? [{ value: 'none', label: 'Select a calendar first' }]
+    : [
+        { value: 'none', label: 'No Event' },
+        ...calendarEvents.map(e => ({ value: e.id, label: e.name }))
+    ];
+
 
   const urgencyOptions = [
     { value: 'none', label: 'No Urgency' },
@@ -93,13 +146,32 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
             </div>
         </div>
         <div>
-          <label className={LABEL_STYLE}>Link to Event</label>
+          <label className={LABEL_STYLE}>Choose a Calendar to Sync</label>
           <CustomSelect 
-            options={eventOptions} 
-            value={formData.eventId || 'none'} 
-            onChange={(v) => handleChange('eventId', v === 'none' ? undefined : v)} 
+            options={[{value: 'none', label: 'No Calendar Sync'}, ...syncCalendarOptions]} 
+            value={syncCalendarId || 'none'} 
+            onChange={(v) => {
+                const newSyncId = v === 'none' ? null : v;
+                setSyncCalendarId(newSyncId);
+                if (!newSyncId) {
+                    handleChange('eventId', undefined);
+                }
+            }}
           />
         </div>
+        {syncCalendarId && (
+            <div>
+              <label className={LABEL_STYLE}>Link to Event</label>
+              <CustomSelect 
+                options={eventOptions} 
+                value={formData.eventId || 'none'} 
+                onChange={(v) => handleChange('eventId', v === 'none' ? undefined : v)} 
+              />
+              <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>
+                Only events on the task's due date will appear.
+              </p>
+            </div>
+        )}
         <div>
           <label className={LABEL_STYLE}>Color</label>
           <div className="grid grid-cols-7 gap-2">

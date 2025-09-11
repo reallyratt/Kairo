@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect, ReactNode } from 'react';
 interface CustomSelectOption {
   value: string;
   label: string;
+  className?: string;
 }
 
 interface CustomSelectHeader {
@@ -97,7 +98,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, c
                 return (
                   <li
                     key={option.value}
-                    className={`px-4 py-2 cursor-pointer hover:bg-fuchsia-400/20 ${option.value === value ? 'font-bold' : ''}`}
+                    className={`px-4 py-2 cursor-pointer hover:bg-fuchsia-400/20 ${option.value === value ? 'font-bold' : ''} ${option.className || ''}`}
                     style={{
                         color: option.value === value ? 'var(--accent-primary)' : 'var(--text-primary)',
                     }}
