@@ -163,7 +163,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
         case 'confirm_close': return 'Unsaved Changes';
         case 'confirm_save': return 'Save Recurring Event';
         case 'form':
-        default: return isEditing ? 'Edit Event' : 'Add Event';
+        default: return isEditing ? 'Edit Event' : 'Create New Event';
     }
   }
 
@@ -223,60 +223,69 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
         {view === 'form' && (
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {!isEditing && (
-                <div>
-                    <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Calendar</label>
-                    <CustomSelect
-                        options={calendarOptions}
-                        value={formData.calendarId || ''}
-                        onChange={val => handleChange('calendarId', val)}
-                    />
-                    {errors.calendarId && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.calendarId}</p>}
+                <div className="flex items-center gap-3">
+                    <i className="fa-solid fa-folder-open w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                    <div className="flex-grow">
+                        <CustomSelect
+                            options={calendarOptions}
+                            value={formData.calendarId || ''}
+                            onChange={val => handleChange('calendarId', val)}
+                        />
+                        {errors.calendarId && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.calendarId}</p>}
+                    </div>
                 </div>
             )}
-            <div>
-                <label htmlFor="eventName" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Event Name</label>
-                <input id="eventName" type="text" placeholder="(required)" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
-                {errors.name && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.name}</p>}
-            </div>
-            <div>
-                <label htmlFor="description" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Description</label>
-                <textarea id="description" placeholder="(Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-24 resize-none"></textarea>
-            </div>
-            <div>
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label htmlFor="startTime" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Start Time</label>
-                        <input id="startTime" type="time" value={formData.startTime || ''} onChange={e => handleChange('startTime', e.target.value)} className="form-input" required />
-                    </div>
-                    <div>
-                        <label htmlFor="endTime" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>End Time</label>
-                        <input id="endTime" type="time" value={formData.endTime || ''} onChange={e => handleChange('endTime', e.target.value)} className="form-input" required />
-                    </div>
+            <div className="flex items-center gap-3">
+                <i className="fa-solid fa-pen-nib w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                    <input id="eventName" type="text" placeholder="Event Name (Required)" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
+                    {errors.name && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.name}</p>}
                 </div>
-                {errors.time && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.time}</p>}
             </div>
-            <div>
-                <label htmlFor="eventDate" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Date</label>
-                <input id="eventDate" type="date" value={formData.date || ''} onChange={e => handleChange('date', e.target.value)} className="form-input" required />
-                {errors.date && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.date}</p>}
+             <div className="flex items-start gap-3">
+                <i className="fa-solid fa-paragraph w-6 text-center text-lg pt-2" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                    <textarea id="description" placeholder="Description (Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-24 resize-none"></textarea>
+                </div>
             </div>
-            <div className={`transition-all duration-300 ease-in-out ${isEditing ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-40 opacity-100 pt-1'}`}>
-              <div>
-                <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Repetition</label>
-                <CustomSelect options={repetitionOptions} value={repetition} onChange={(v) => setRepetition(v as RepetitionType)} />
+             <div className="flex items-center gap-3">
+                <i className="fa-solid fa-clock w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                    <div className="grid grid-cols-2 gap-4">
+                        <input id="startTime" type="time" title="Start Time" value={formData.startTime || ''} onChange={e => handleChange('startTime', e.target.value)} className="form-input" required />
+                        <input id="endTime" type="time" title="End Time" value={formData.endTime || ''} onChange={e => handleChange('endTime', e.target.value)} className="form-input" required />
+                    </div>
+                    {errors.time && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.time}</p>}
+                </div>
+            </div>
+             <div className="flex items-center gap-3">
+                <i className="fa-solid fa-calendar-day w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                    <input id="eventDate" type="date" title="Event Date" value={formData.date || ''} onChange={e => handleChange('date', e.target.value)} className="form-input" required />
+                    {errors.date && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.date}</p>}
+                </div>
+            </div>
+            <div className={`transition-all duration-300 ease-in-out ${isEditing ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-40 opacity-100'}`}>
+              <div className="flex items-center gap-3">
+                  <i className="fa-solid fa-repeat w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                  <div className="flex-grow">
+                    <CustomSelect options={repetitionOptions} value={repetition} onChange={(v) => setRepetition(v as RepetitionType)} />
+                  </div>
               </div>
             </div>
-            <div>
-                <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Color</label>
-                <div className="grid grid-cols-7 gap-2">
-                    {COLORS.map(c => (
-                        <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
-                    ))}
+             <div className="flex items-start gap-3">
+                <i className="fa-solid fa-palette w-6 text-center text-lg pt-1" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                    <div className="grid grid-cols-7 gap-2">
+                        {COLORS.map(c => (
+                            <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                        ))}
+                    </div>
                 </div>
             </div>
             <div className="flex gap-2 pt-2">
               {isEditing && (
-                  <button type="button" onClick={() => changeView('confirm_delete')} className="btn btn-danger">Delete</button>
+                  <button type="button" onClick={() => changeView('confirm_delete')} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>
               )}
               <button type="submit" className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
             </div>
@@ -529,7 +538,10 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
                 onDrop={isDraggingCalendar ? handleUncategorizeDrop : undefined}
             >
                 <form onSubmit={handleAddCategory} className="flex gap-2">
-                    <input type="text" placeholder="New category name" value={newCategoryName} onChange={e => { setNewCategoryName(e.target.value); if(categoryError) setCategoryError(''); }} className="form-input flex-grow" />
+                    <div className="flex-grow relative flex items-center">
+                        <i className="fa-solid fa-folder-plus absolute left-3 text-lg pointer-events-none" style={{color: 'var(--text-tertiary)'}}></i>
+                        <input type="text" placeholder="New category name" value={newCategoryName} onChange={e => { setNewCategoryName(e.target.value); if(categoryError) setCategoryError(''); }} className="form-input flex-grow pl-10" />
+                    </div>
                     <button type="submit" className="btn btn-primary btn-icon flex-shrink-0" aria-label="Add Category"><i className="fa-solid fa-plus"></i></button>
                 </form>
                 {categoryError && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{categoryError}</p>}
@@ -1019,18 +1031,22 @@ const AddCalendarModal: React.FC<{isOpen: boolean, onClose: () => void, onAdd: (
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="New Calendar">
+        <Modal isOpen={isOpen} onClose={onClose} title="Add New Calendar">
             <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label htmlFor="calName" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Calendar Name</label>
-                    <input id="calName" type="text" placeholder="e.g. Work, School" value={name} onChange={e => setName(e.target.value)} className="form-input" required />
+                <div className="flex items-center gap-3">
+                    <i className="fa-solid fa-pen-nib w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                    <div className="flex-grow">
+                        <input id="calName" type="text" placeholder="Calendar Name (Required)" value={name} onChange={e => setName(e.target.value)} className="form-input" required />
+                    </div>
                 </div>
-                <div>
-                    <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Color</label>
-                    <div className="grid grid-cols-7 gap-2">
-                        {COLORS.map(c => (
-                            <button type="button" key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
-                        ))}
+                <div className="flex items-start gap-3">
+                    <i className="fa-solid fa-palette w-6 text-center text-lg pt-1" style={{color: 'var(--text-secondary)'}}></i>
+                    <div className="flex-grow">
+                        <div className="grid grid-cols-7 gap-2">
+                            {COLORS.map(c => (
+                                <button type="button" key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                            ))}
+                        </div>
                     </div>
                 </div>
                 <button type="submit" className="w-full btn btn-primary"><i className="fa-solid fa-plus text-lg"></i></button>
@@ -1084,21 +1100,25 @@ const ManageCalendarModal: React.FC<ManageCalendarModalProps> = ({ isOpen, onClo
                 </div>
             ) : (
                 <form onSubmit={handleUpdate} className="space-y-4">
-                    <div>
-                        <label htmlFor="editCalName" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Calendar Name</label>
-                        <input id="editCalName" type="text" value={name} onChange={e => setName(e.target.value)} className="form-input" required />
+                    <div className="flex items-center gap-3">
+                        <i className="fa-solid fa-pen-nib w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                        <div className="flex-grow">
+                            <input id="editCalName" type="text" placeholder="Calendar Name (Required)" value={name} onChange={e => setName(e.target.value)} className="form-input" required />
+                        </div>
                     </div>
-                    <div>
-                        <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Color</label>
-                        <div className="grid grid-cols-7 gap-2">
-                            {COLORS.map(c => (
-                                <button type="button" key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
-                            ))}
+                    <div className="flex items-start gap-3">
+                        <i className="fa-solid fa-palette w-6 text-center text-lg pt-1" style={{color: 'var(--text-secondary)'}}></i>
+                        <div className="flex-grow">
+                            <div className="grid grid-cols-7 gap-2">
+                                {COLORS.map(c => (
+                                    <button type="button" key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => setShowConfirmDelete(true)} className="flex-1 btn btn-danger">{t('common.delete')}</button>
-                        <button type="submit" className="flex-1 btn btn-primary">{t('common.save')}</button>
+                        <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label={t('common.delete')}><i className="fa-solid fa-trash"></i></button>
+                        <button type="submit" className="flex-grow btn btn-primary">{t('common.save')}</button>
                     </div>
                 </form>
             )}

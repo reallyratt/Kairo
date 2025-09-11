@@ -316,7 +316,6 @@ function TodoPage() {
             {uncheckedTasks.length === 0 ? (
                 <div className="text-center py-10 rounded-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
                     <i className="fa-solid fa-check-double text-4xl mb-3" style={{color: 'var(--text-tertiary)'}}></i>
-                    <p style={{color: 'var(--text-secondary)'}}>No pending tasks. Great job!</p>
                 </div>
             ) : sortBy === 'default' ? (
                  renderTaskGroups(groupedUncheckedTasks)
@@ -351,12 +350,11 @@ function TodoPage() {
         initialData={editingTask || { calendarId: selectedCalendarId }}
       />
       
-      <Modal isOpen={isClearConfirmOpen} onClose={() => setIsClearConfirmOpen(false)} title="Confirm Clear">
+      <Modal isOpen={isClearConfirmOpen} onClose={() => setIsClearConfirmOpen(false)} title="Are you sure">
             <div className="text-center">
-                <p className="mb-4" style={{color: 'var(--text-secondary)'}}>Are you sure you want to permanently delete all completed tasks?</p>
-                <div className="flex gap-2">
-                    <button onClick={() => setIsClearConfirmOpen(false)} className="flex-1 btn btn-secondary">Cancel</button>
-                    <button onClick={handleClearCompleted} className="flex-1 btn btn-danger">Clear</button>
+                <p className="mb-4" style={{color: 'var(--text-secondary)'}}>Do you want to permanently delete all completed tasks?</p>
+                <div className="pt-2">
+                    <button onClick={handleClearCompleted} className="w-full btn btn-danger">Yes</button>
                 </div>
             </div>
         </Modal>

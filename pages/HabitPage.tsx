@@ -130,14 +130,13 @@ const HabitArchiveView: React.FC<{
                 </div>
             </div>
             
-            <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Confirm Deletion">
-                 <div className="space-y-4 text-center">
-                    <p style={{color: 'var(--text-secondary)'}}>
-                        Are you sure? This will permanently delete this habit and all its logs. This action cannot be undone.
+            <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Are you sure?">
+                <div className="text-center">
+                    <p className="mb-4" style={{color: 'var(--text-secondary)'}}>
+                        This will permanently delete this habit and all its logs. This action cannot be undone.
                     </p>
-                    <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => setShowConfirmDelete(false)} className="flex-1 btn btn-secondary">Cancel</button>
-                        <button type="button" onClick={handleDeleteConfirm} className="flex-1 btn btn-danger">Confirm Delete</button>
+                    <div className="pt-2">
+                        <button type="button" onClick={handleDeleteConfirm} className="w-full btn btn-danger">Yes</button>
                     </div>
                 </div>
             </Modal>
@@ -287,15 +286,14 @@ const HabitFormModal: React.FC<HabitFormModalProps> = ({ isOpen, onClose, onSave
     ];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Confirm Deletion" : (isEditing ? 'Edit Habit' : 'Add Habit')}>
+        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Are you sure?" : (isEditing ? 'Edit Habit' : 'Add Habit')}>
              {showConfirmDelete ? (
-                <div className="space-y-4 text-center">
-                    <p style={{color: 'var(--text-secondary)'}}>
-                        Are you sure? This will permanently delete this habit and all its logs. This action cannot be undone.
+                <div className="text-center">
+                    <p className="mb-4" style={{color: 'var(--text-secondary)'}}>
+                        This will permanently delete this habit and all its logs. This action cannot be undone.
                     </p>
-                    <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => setShowConfirmDelete(false)} className="flex-1 btn btn-secondary">Cancel</button>
-                        <button type="button" onClick={handleDeleteConfirm} className="flex-1 btn btn-danger">Confirm Delete</button>
+                    <div className="pt-2">
+                        <button type="button" onClick={handleDeleteConfirm} className="w-full btn btn-danger">Yes</button>
                     </div>
                 </div>
             ) : (
@@ -331,7 +329,7 @@ const HabitFormModal: React.FC<HabitFormModalProps> = ({ isOpen, onClose, onSave
                         </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                        {isEditing && <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger">Delete</button>}
+                        {isEditing && <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>}
                         <button type="submit" className="flex-grow btn btn-primary">{isEditing ? 'Save Changes' : 'Save Habit'}</button>
                     </div>
                 </form>

@@ -28,6 +28,7 @@ const TransactionFormModal: React.FC<{
     const { financeCategories } = useAppContext();
     const [formData, setFormData] = useState<Partial<TTransaction>>({});
     const isEditing = !!initialData?.id;
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
     // New state for combobox
     const [categoryInput, setCategoryInput] = useState('');
@@ -52,6 +53,7 @@ const TransactionFormModal: React.FC<{
                 walletId: initialData?.walletId || walletId,
             });
             setCategoryInput(initialCategoryName); // Set combobox input
+            setShowConfirmDelete(false);
         }
     }, [isOpen, initialData, walletId, financeCategories]);
 
@@ -106,91 +108,107 @@ const TransactionFormModal: React.FC<{
         onSave(formData);
     }
     
+    const handleConfirmDelete = () => {
+        if (onDelete && formData.id) {
+            onDelete(formData.id);
+        }
+    };
+    
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Transaction" : "Add Transaction"}>
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div>
-                    <label className={LABEL_STYLE}>Type</label>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button type="button" onClick={() => handleChange('type', TransactionType.Expense)} className={`py-2 rounded-md font-semibold transition-colors ${formData.type === TransactionType.Expense ? 'bg-red-400 text-white' : ''}`} style={{ backgroundColor: formData.type === TransactionType.Expense ? 'var(--danger-primary)' : 'var(--bg-tertiary)', color: formData.type === TransactionType.Expense ? 'var(--text-inverted)' : 'var(--text-primary)'}}>Expense</button>
-                        <button type="button" onClick={() => handleChange('type', TransactionType.Income)} className={`py-2 rounded-md font-semibold transition-colors ${formData.type === TransactionType.Income ? 'bg-green-400 text-white' : ''}`} style={{ backgroundColor: formData.type === TransactionType.Income ? 'var(--success-primary)' : 'var(--bg-tertiary)', color: formData.type === TransactionType.Income ? 'var(--text-inverted)' : 'var(--text-primary)'}}>Income</button>
-                    </div>
-                </div>
-                <div>
-                    <label htmlFor="title" className={LABEL_STYLE}>Title</label>
-                    <input id="title" type="text" placeholder="e.g., Lunch with friends" value={formData.title || ''} onChange={e => handleChange('title', e.target.value)} className="form-input" required />
-                </div>
-                 <div>
-                    <label htmlFor="amount" className={LABEL_STYLE}>Amount (in Rupiah)</label>
-                    <input
-                        id="amount"
-                        type="number"
-                        placeholder="50000"
-                        value={formData.amount ?? ''}
-                        onChange={e => handleChange('amount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
-                        onBlur={e => {
-                            const value = parseFloat(e.target.value);
-                            if (!isNaN(value) && value < 0) {
-                                handleChange('amount', 0);
-                            }
-                        }}
-                        className="form-input"
-                        step="1"
-                        min="0"
-                        required
-                    />
-                </div>
-                 <div>
-                    <label htmlFor="description" className={LABEL_STYLE}>Description</label>
-                    <textarea id="description" placeholder="(Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-20 resize-none"></textarea>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+        <>
+            <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? "Edit Transaction" : "Add Transaction"}>
+                <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label htmlFor="category" className={LABEL_STYLE}>Category</label>
-                         <div ref={categoryInputRef} className="relative">
-                            <input
-                                id="category"
-                                type="text"
-                                placeholder="e.g., Food or select one"
-                                value={categoryInput}
-                                onChange={handleCategoryInputChange}
-                                onFocus={() => setIsCategoryDropdownOpen(true)}
-                                className="form-input"
-                                required
-                                autoComplete="off"
-                            />
-                            {isCategoryDropdownOpen && suggestedCategories.length > 0 && (
-                                <div className="absolute z-20 mt-1 w-full bg-slate-700 rounded-lg shadow-lg max-h-40 overflow-auto animate-dropdown-in" style={{backgroundColor: 'var(--bg-quaternary)'}}>
-                                    <ul>
-                                        {suggestedCategories.map(c => (
-                                            <li
-                                                key={c.id}
-                                                className="px-4 py-2 cursor-pointer hover:bg-fuchsia-400/20"
-                                                style={{color: 'var(--text-primary)'}}
-                                                onMouseDown={(e) => { // Use onMouseDown to fire before input's onBlur
-                                                    e.preventDefault();
-                                                    handleCategorySelect(c.name);
-                                                }}
-                                            >
-                                                {c.name}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
+                        <label className={LABEL_STYLE}>Type</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            <button type="button" onClick={() => handleChange('type', TransactionType.Expense)} className={`py-2 rounded-md font-semibold transition-colors ${formData.type === TransactionType.Expense ? 'bg-red-400 text-white' : ''}`} style={{ backgroundColor: formData.type === TransactionType.Expense ? 'var(--danger-primary)' : 'var(--bg-tertiary)', color: formData.type === TransactionType.Expense ? 'var(--text-inverted)' : 'var(--text-primary)'}}>Expense</button>
+                            <button type="button" onClick={() => handleChange('type', TransactionType.Income)} className={`py-2 rounded-md font-semibold transition-colors ${formData.type === TransactionType.Income ? 'bg-green-400 text-white' : ''}`} style={{ backgroundColor: formData.type === TransactionType.Income ? 'var(--success-primary)' : 'var(--bg-tertiary)', color: formData.type === TransactionType.Income ? 'var(--text-inverted)' : 'var(--text-primary)'}}>Income</button>
                         </div>
                     </div>
                     <div>
-                        <label htmlFor="date" className={LABEL_STYLE}>Date</label>
-                        <input id="date" type="date" value={formData.date || ''} onChange={e => handleChange('date', e.target.value)} className="form-input" required />
+                        <label htmlFor="title" className={LABEL_STYLE}>Title</label>
+                        <input id="title" type="text" placeholder="e.g., Lunch with friends" value={formData.title || ''} onChange={e => handleChange('title', e.target.value)} className="form-input" required />
+                    </div>
+                     <div>
+                        <label htmlFor="amount" className={LABEL_STYLE}>Amount (in Rupiah)</label>
+                        <input
+                            id="amount"
+                            type="number"
+                            placeholder="50000"
+                            value={formData.amount ?? ''}
+                            onChange={e => handleChange('amount', e.target.value === '' ? undefined : parseFloat(e.target.value))}
+                            onBlur={e => {
+                                const value = parseFloat(e.target.value);
+                                if (!isNaN(value) && value < 0) {
+                                    handleChange('amount', 0);
+                                }
+                            }}
+                            className="form-input"
+                            step="1"
+                            min="0"
+                            required
+                        />
+                    </div>
+                     <div>
+                        <label htmlFor="description" className={LABEL_STYLE}>Description</label>
+                        <textarea id="description" placeholder="(Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-20 resize-none"></textarea>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label htmlFor="category" className={LABEL_STYLE}>Category</label>
+                             <div ref={categoryInputRef} className="relative">
+                                <input
+                                    id="category"
+                                    type="text"
+                                    placeholder="e.g., Food or select one"
+                                    value={categoryInput}
+                                    onChange={handleCategoryInputChange}
+                                    onFocus={() => setIsCategoryDropdownOpen(true)}
+                                    className="form-input"
+                                    required
+                                    autoComplete="off"
+                                />
+                                {isCategoryDropdownOpen && suggestedCategories.length > 0 && (
+                                    <div className="absolute z-20 mt-1 w-full bg-slate-700 rounded-lg shadow-lg max-h-40 overflow-auto animate-dropdown-in" style={{backgroundColor: 'var(--bg-quaternary)'}}>
+                                        <ul>
+                                            {suggestedCategories.map(c => (
+                                                <li
+                                                    key={c.id}
+                                                    className="px-4 py-2 cursor-pointer hover:bg-fuchsia-400/20"
+                                                    style={{color: 'var(--text-primary)'}}
+                                                    onMouseDown={(e) => { // Use onMouseDown to fire before input's onBlur
+                                                        e.preventDefault();
+                                                        handleCategorySelect(c.name);
+                                                    }}
+                                                >
+                                                    {c.name}
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="date" className={LABEL_STYLE}>Date</label>
+                            <input id="date" type="date" value={formData.date || ''} onChange={e => handleChange('date', e.target.value)} className="form-input" required />
+                        </div>
+                    </div>
+                    <div className="flex gap-2 pt-2">
+                        {isEditing && onDelete && <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>}
+                        <button type="submit" className="flex-grow btn btn-primary">{isEditing ? 'Save Changes' : 'Add Transaction'}</button>
+                    </div>
+                </form>
+            </Modal>
+             <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Are you sure?">
+                <div className="text-center">
+                    <p className="mb-4" style={{color: 'var(--text-secondary)'}}>Do you want to permanently delete this transaction?</p>
+                    <div className="pt-2">
+                        <button onClick={handleConfirmDelete} className="w-full btn btn-danger">Yes</button>
                     </div>
                 </div>
-                <div className="flex gap-2 pt-2">
-                    {isEditing && onDelete && <button type="button" onClick={() => onDelete(formData.id!)} className="btn btn-danger">Delete</button>}
-                    <button type="submit" className="flex-grow btn btn-primary">{isEditing ? 'Save Changes' : 'Add Transaction'}</button>
-                </div>
-            </form>
-        </Modal>
+            </Modal>
+        </>
     );
 }
 
@@ -280,13 +298,12 @@ const ManageWalletModal: React.FC<{
     };
     
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Confirm Deletion" : "Manage Wallet"}>
+        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Are you sure?" : "Manage Wallet"}>
             {showConfirmDelete ? (
-                <div className="space-y-4 text-center">
-                    <p style={{color: 'var(--text-secondary)'}}>Are you sure? This will delete the wallet and all its transactions.</p>
-                    <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => setShowConfirmDelete(false)} className="flex-1 btn btn-secondary">Cancel</button>
-                        <button type="button" onClick={handleDeleteConfirm} className="flex-1 btn btn-danger">Confirm Delete</button>
+                <div className="text-center">
+                    <p className="mb-4" style={{color: 'var(--text-secondary)'}}>Are you sure? This will delete the wallet and all its transactions.</p>
+                    <div className="pt-2">
+                        <button type="button" onClick={handleDeleteConfirm} className="w-full btn btn-danger">Yes</button>
                     </div>
                 </div>
             ) : (
@@ -312,7 +329,7 @@ const ManageWalletModal: React.FC<{
                         </div>
                     </div>
                     <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger">Delete</button>
+                        <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>
                         <button type="submit" className="flex-grow btn btn-primary">Save Changes</button>
                     </div>
                 </form>

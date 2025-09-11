@@ -246,7 +246,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, o
   const availableTagsToAdd = tags.filter(tag => !noteTagIds.includes(tag.id));
 
   return (
-    <div className="flex flex-col h-full animate-view-in" style={{backgroundColor: 'var(--bg-primary)'}}>
+    <div className="fixed inset-0 z-40 flex flex-col h-full animate-view-in" style={{backgroundColor: 'var(--bg-primary)'}}>
         <style>{`
             .editor-content ul { list-style-type: disc; margin-left: 1.5rem; padding-left: 0.5rem; }
             .editor-content ol { list-style-type: decimal; margin-left: 1.5rem; padding-left: 0.5rem; }
@@ -258,59 +258,59 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, o
             <button onClick={handleCancelAttempt} className="btn btn-secondary btn-icon text-lg flex-shrink-0 ml-4">&times;</button>
         </header>
 
-        <main className="flex-grow overflow-y-auto px-4">
+        <main className="flex-grow overflow-y-auto px-4 flex flex-col">
             <EditBar onCommand={handleCommand} />
             <div
                 ref={contentRef}
                 contentEditable
                 onInput={e => setContent((e.target as HTMLDivElement).innerHTML)}
-                className="editor-content focus:outline-none min-h-[50vh] w-full"
+                className="editor-content focus:outline-none w-full flex-grow"
             />
         </main>
         
         <footer className="flex-shrink-0 p-4 border-t space-y-3" style={{borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)'}}>
-            <div>
-                <label className="block text-sm font-medium mb-1" style={{color: 'var(--text-secondary)'}}>Folder</label>
-                <CustomSelect options={folderOptions} value={noteCalendarId} onChange={setNoteCalendarId}/>
+            <div className="flex items-center gap-3">
+                <i className="fa-solid fa-folder-open w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                    <CustomSelect options={folderOptions} value={noteCalendarId} onChange={setNoteCalendarId}/>
+                </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1" style={{color: 'var(--text-secondary)'}}>Tags</label>
-              <div className="flex items-center gap-2">
-                  <div className="flex-grow flex flex-wrap gap-1 p-2 rounded-md min-h-[38px]" style={{backgroundColor: 'var(--bg-tertiary)'}}>
-                    {noteTagIds.map(tagId => {
-                      const tag = tags.find(t => t.id === tagId);
-                      return tag ? <button key={tag.id} onClick={() => setNoteTagIds(noteTagIds.filter(id => id !== tagId))} className="bg-fuchsia-500/20 text-fuchsia-300 text-xs font-semibold px-2 py-0.5 rounded-full hover:bg-fuchsia-500/40" style={{backgroundColor: 'var(--accent-primary)', color: 'var(--accent-text)', opacity: 0.8}}>&times; {tag.name}</button> : null;
-                    })}
-                  </div>
-                  <button onClick={() => setIsManageTagsModalOpen(true)} className="btn btn-secondary btn-icon text-xs flex-shrink-0"><i className="fa-solid fa-plus"></i></button>
-              </div>
+            <div className="flex items-center gap-3">
+                <i className="fa-solid fa-tags w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow flex items-center gap-2">
+                    <div className="flex-grow flex flex-wrap gap-1 p-2 rounded-md min-h-[38px]" style={{backgroundColor: 'var(--bg-tertiary)'}}>
+                      {noteTagIds.map(tagId => {
+                        const tag = tags.find(t => t.id === tagId);
+                        return tag ? <button key={tag.id} onClick={() => setNoteTagIds(noteTagIds.filter(id => id !== tagId))} className="bg-fuchsia-500/20 text-fuchsia-300 text-xs font-semibold px-2 py-0.5 rounded-full hover:bg-fuchsia-500/40" style={{backgroundColor: 'var(--accent-primary)', color: 'var(--accent-text)', opacity: 0.8}}>&times; {tag.name}</button> : null;
+                      })}
+                    </div>
+                    <button onClick={() => setIsManageTagsModalOpen(true)} className="btn btn-secondary btn-icon text-xs flex-shrink-0"><i className="fa-solid fa-plus"></i></button>
+                </div>
             </div>
             <div className="flex gap-2 pt-2">
-                {noteToEdit && <button onClick={() => setShowConfirmDelete(true)} className="btn btn-danger">{t('notes.delete')}</button>}
-                <button onClick={handleSave} disabled={!hasChanges} className="flex-grow btn btn-primary">{t('notes.save')}</button>
+                {noteToEdit && <button onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label={t('notes.delete')}><i className="fa-solid fa-trash"></i></button>}
+                <button onClick={handleSave} disabled={!hasChanges} className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
             </div>
         </footer>
 
         <Modal isOpen={showConfirmCancel} onClose={() => setShowConfirmCancel(false)} title="Unsaved Changes">
             <div className="text-center">
                 <p className="mb-4" style={{color: 'var(--text-secondary)'}}>You have unsaved changes. Are you sure you want to discard them?</p>
-                <div className="flex gap-2">
-                    <button onClick={() => setShowConfirmCancel(false)} className="flex-1 btn btn-secondary">Keep Editing</button>
-                    <button onClick={onCancel} className="flex-1 btn btn-danger">Discard</button>
+                <div className="pt-2">
+                    <button onClick={onCancel} className="w-full btn btn-danger">Discard</button>
                 </div>
             </div>
         </Modal>
 
-        <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Confirm Deletion">
+        <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Are you sure?">
             <div className="text-center">
-                <p className="mb-4" style={{color: 'var(--text-secondary)'}}>Are you sure you want to permanently delete this note?</p>
-                <div className="flex gap-2">
-                    <button onClick={() => setShowConfirmDelete(false)} className="flex-1 btn btn-secondary">{t('common.cancel')}</button>
+                <p className="mb-4" style={{color: 'var(--text-secondary)'}}>Do you want to permanently delete this note?</p>
+                <div className="pt-2">
                     <button 
                         onClick={() => { if (noteToEdit) onDelete(noteToEdit.id); }} 
-                        className="flex-1 btn btn-danger"
+                        className="w-full btn btn-danger"
                     >
-                        {t('common.delete')}
+                        Yes
                     </button>
                 </div>
             </div>
@@ -318,16 +318,16 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, o
 
         <Modal isOpen={isManageTagsModalOpen} onClose={() => setIsManageTagsModalOpen(false)} title="Manage Tags">
             <form onSubmit={(e) => { e.preventDefault(); handleCreateTag(); }} className="mb-4">
-                <label className="block text-sm font-medium mb-2" style={{color: 'var(--text-secondary)'}}>Create new tag</label>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                    <i className="fa-solid fa-tag w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
                     <input 
                         type="text" 
                         value={newTagName} 
                         onChange={e => setNewTagName(e.target.value)} 
-                        placeholder="Tag name..." 
+                        placeholder="New tag name..." 
                         className="form-input flex-grow" 
                     />
-                    <button type="submit" className="btn btn-primary flex-shrink-0">{t('common.create')}</button>
+                    <button type="submit" className="btn btn-primary btn-icon flex-shrink-0" aria-label="Create tag"><i className="fa-solid fa-plus"></i></button>
                 </div>
             </form>
 
@@ -358,7 +358,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, o
 
 // --- Main Notes Page Component ---
 function NotesPage() {
-  const { notes, setNotes, calendars, tags, setTags, activeAction, setActiveAction } = useAppContext();
+  const { notes, setNotes, calendars, tags, setTags, activeAction, setActiveAction, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
   const { t } = useTranslation();
   const [view, setView] = useState<'list' | 'editor'>('list');
   const [selectedNote, setSelectedNote] = useState<TNote | null>(null);
@@ -439,7 +439,48 @@ function NotesPage() {
     setSelectedNote(null);
   };
 
-  const calendarOptions = calendars.map(cal => ({ value: cal.id, label: cal.name }));
+  const calendarOptions = useMemo(() => {
+    const options: any[] = [{ value: 'overview', label: 'Overview', className: 'text-lg font-bold py-1' }];
+    
+    const userCalendars = calendars.filter(c => c.id !== 'overview');
+    const sortedCalendars = calendarOrder
+        .map(id => userCalendars.find(c => c.id === id))
+        .filter((c): c is TCalendar => !!c);
+    
+    const categorized = new Map<string, TCalendar[]>();
+    const uncategorized: TCalendar[] = [];
+
+    sortedCalendars.forEach(cal => {
+        if (cal.categoryId && calendarCategories.find(cat => cat.id === cal.categoryId)) {
+            if (!categorized.has(cal.categoryId)) {
+                categorized.set(cal.categoryId, []);
+            }
+            categorized.get(cal.categoryId)!.push(cal);
+        } else {
+            uncategorized.push(cal);
+        }
+    });
+    
+    uncategorized.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+    
+    if (uncategorized.length > 0 && categorized.size > 0) {
+        options.push({ isHeader: true, label: ' ' }); 
+    }
+
+    calendarCategoryOrder.forEach(catId => {
+        const cat = calendarCategories.find(c => c.id === catId);
+        if (cat) {
+            const cals = categorized.get(cat.id);
+            if (cals && cals.length > 0) {
+                options.push({ isHeader: true, label: cat.name });
+                cals.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+            }
+        }
+    });
+
+    return options;
+  }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
+
   const tagOptions = availableTags.map(tag => ({ value: tag.id, label: tag.name }));
 
   if (view === 'editor') {
@@ -467,43 +508,33 @@ function NotesPage() {
                 />
             )}
         </div>
-        
-        {selectedCalendarId !== 'overview' && (
-          <div className="text-center">
-              <button onClick={() => { setSelectedNote(null); setView('editor'); }} className="btn btn-primary w-full">
-                  <i className="fa-solid fa-plus mr-2"></i>
-                  {t('notes.add')}
-              </button>
-          </div>
-        )}
 
-        {filteredNotes.length === 0 && (
-          <div className="text-center py-10 rounded-lg mt-4" style={{backgroundColor: 'var(--bg-secondary)'}}>
-            <i className="fa-solid fa-book-open text-4xl mb-3" style={{color: 'var(--text-tertiary)'}}></i>
-            <p style={{color: 'var(--text-secondary)'}}>No notes found. Create one!</p>
+        {filteredNotes.length === 0 ? (
+          <div className="text-center py-10 rounded-lg mt-4 flex justify-center items-center h-40" style={{backgroundColor: 'var(--bg-secondary)'}}>
+            <i className="fa-solid fa-book-open text-5xl" style={{color: 'var(--text-tertiary)'}}></i>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filteredNotes.map(note => {
+              const cal = calendars.find(c => c.id === note.calendarId);
+              return (
+                <button key={note.id} onClick={() => { setSelectedNote(note); setView('editor'); }} className="w-full text-left flex gap-3 p-3 rounded-lg transition-all duration-150 hover:bg-slate-800/80 active:scale-[0.99]" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                  <div className="w-1.5 self-stretch shrink-0 rounded-full" style={{ backgroundColor: cal?.color || '#fff' }}></div>
+                  <div className="flex-grow overflow-hidden">
+                    <h3 className="font-bold truncate">{note.title}</h3>
+                    <p className="text-sm truncate mt-1" style={{color: 'var(--text-secondary)'}}>{stripHtml(note.content)}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {note.tagIds.map(tagId => {
+                        const tag = tags.find(t => t.id === tagId);
+                        return tag ? <span key={tag.id} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: 'var(--bg-quaternary)', color: 'var(--text-secondary)'}}>{tag.name}</span> : null;
+                      })}
+                    </div>
+                  </div>
+                </button>
+              )
+            })}
           </div>
         )}
-        
-        <div className="space-y-3">
-          {filteredNotes.map(note => {
-            const cal = calendars.find(c => c.id === note.calendarId);
-            return (
-              <button key={note.id} onClick={() => { setSelectedNote(note); setView('editor'); }} className="w-full text-left flex gap-3 p-3 rounded-lg transition-all duration-150 hover:bg-slate-800/80 active:scale-[0.99]" style={{backgroundColor: 'var(--bg-secondary)'}}>
-                <div className="w-1.5 self-stretch shrink-0 rounded-full" style={{ backgroundColor: cal?.color || '#fff' }}></div>
-                <div className="flex-grow overflow-hidden">
-                  <h3 className="font-bold truncate">{note.title}</h3>
-                  <p className="text-sm truncate mt-1" style={{color: 'var(--text-secondary)'}}>{stripHtml(note.content)}</p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {note.tagIds.map(tagId => {
-                      const tag = tags.find(t => t.id === tagId);
-                      return tag ? <span key={tag.id} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: 'var(--bg-quaternary)', color: 'var(--text-secondary)'}}>{tag.name}</span> : null;
-                    })}
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
       </div>
     </div>
   );
