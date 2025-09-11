@@ -7,10 +7,15 @@ interface AboutOverlayProps {
 
 const AboutOverlay: React.FC<AboutOverlayProps> = ({ isOpen, onClose }) => {
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const [expandedLogs, setExpandedLogs] = useState<string[]>(['Kairo v1.5 – Clear Finance Update (Coming Soon)']);
 
   useEffect(() => {
     if (isOpen) {
       setIsAnimatingOut(false);
+      // Ensure the latest log is always expanded when opening
+      if (!expandedLogs.includes('Kairo v1.5 – Clear Finance Update (Coming Soon)')) {
+        setExpandedLogs(['Kairo v1.5 – Clear Finance Update (Coming Soon)']);
+      }
     }
   }, [isOpen]);
 
@@ -19,18 +24,148 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ isOpen, onClose }) => {
     setTimeout(onClose, 300); // Match animation duration
   };
 
+  const toggleLog = (logTitle: string) => {
+    setExpandedLogs(prev =>
+      prev.includes(logTitle)
+        ? prev.filter(title => title !== logTitle)
+        : [...prev, logTitle]
+    );
+  };
+
   if (!isOpen) {
     return null;
   }
   
   const animationClass = isAnimatingOut ? 'animate-slide-out' : 'animate-slide-in';
 
+  const devLogs = [
+     {
+      title: 'Kairo v1.5 – Clear Finance Update (Coming Soon)',
+      description: 'This update will focus on enhancing the finance tracking experience.',
+      items: [
+        { title: 'UI Improvements', points: ['Clearer UI, more compact textboxes'] },
+        { title: 'Bug Fixes', points: ['Various bug fixes will be addressed.'] },
+        { title: 'Upcoming Features', points: ['Still in planning.'] }
+      ]
+    },
+     {
+      title: 'Kairo v1.4 – Tracked Habits Update (Coming Soon)',
+      description: 'This update will bring improvements to the habit tracking module.',
+      items: [
+        { title: 'UI Improvements', points: ['Clearer UI, more compact textboxes'] },
+        { title: 'Bug Fixes', points: ['Various bug fixes will be addressed.'] },
+        { title: 'Upcoming Features', points: ['Still in planning.'] }
+      ]
+    },
+    {
+      title: 'Kairo v1.3 – Organized Notes Update (Coming Soon)',
+      description: 'Get ready for a more powerful and flexible note-taking experience.',
+      items: [
+        { title: 'UI Improvements', points: ['Clearer UI, more compact textboxes'] },
+        { title: 'Bug Fixes', points: ['Various bug fixes will be addressed.'] },
+        { title: 'New Features', points: [
+            'Add image, hyperlink, video, drawing, and voice notes.',
+            'Customize entire note display (e.g., background colors).'
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Kairo v1.2 – Synced Tasks Update',
+      description: 'Managing your tasks is about to get a lot more efficient with powerful new sorting and viewing options.',
+      items: [
+        { title: 'UI Improvements', points: ['Clearer UI, more compact textboxes'] },
+        { title: 'Bug Fixes', points: ['Various bug fixes will be addressed.'] },
+        { title: 'New Features', points: [
+            'Sorting system (by calendar, default grouping, due, name, urgency, last modified, date created).',
+            'Separate views for pending vs completed tasks.',
+            'Button to clear finished tasks.'
+          ]
+        }
+      ]
+    },
+     {
+      title: 'Kairo v1.1 – Multi Calendar Update',
+      description: 'This update introduces more control and organization for your calendars.',
+      items: [
+        { title: 'UI Improvements', points: ['Clearer UI, more compact textboxes'] },
+        { title: 'Bug Fixes', points: ['Various bug fixes will be addressed.'] },
+        { title: 'New Features', points: [
+            'Rearrange calendars in overview.',
+            'Add categories to calendars.',
+            'Choose which calendars are displayed in overview.'
+          ]
+        }
+      ]
+    },
+    {
+      title: 'Kairo v1.0 – The Foundations',
+      description: 'This update lays down the basic foundations of the app, bringing in the essential systems that will grow over time. Here’s what’s new:',
+      items: [
+        {
+          title: 'Multi Calendar',
+          points: [
+            'Introduced a Multi Calendar system.',
+            'Events now include: name, description, start/end time, date, repetition, and color.',
+            'Ability to edit and delete events.',
+            'Overview calendar: view all events across calendars.',
+            'Dropdown menu: filter by individual calendars.',
+            'Event box: display all events for a specific date or for the entire month.',
+          ],
+        },
+        {
+          title: 'Synced Tasks',
+          points: [
+            'Add tasks with name, description, due date, urgency, and optional link to a calendar event.',
+            'Edit and delete tasks.',
+            'Tasks can be grouped automatically based on related events in the calendar.',
+          ],
+        },
+        {
+          title: 'Organized Notes',
+          points: [
+            'Add notes with title, content, and a rich edit bar (bold, italic, underline, text size, numbering, bullet points, and text color).',
+            'Notes can be organized into folders linked to calendars.',
+            'Tags system: add/manage tags and sort notes by folder and or tag.',
+          ],
+        },
+        {
+          title: 'Tracked Habit',
+          points: [
+            'Add habits with name, description, category, type (checkbox or unit), and color.',
+            'Category management system (add, edit, delete).',
+            'Edit and delete habits anytime.',
+            'Habit archive calendar: view progress, with green marks for completed habits on each day.',
+          ],
+        },
+        {
+          title: 'Clear Finance',
+          points: [
+            'Multi-wallet support with wallet management tools.',
+            'Add new entries for income and expenses with: Type (income/expense), title, amount (Rp), description, category, and date.',
+            'View and track balances by day, week, month, year, all-time, or custom range.',
+            'Edit and delete existing entries.',
+          ],
+        },
+        {
+          title: 'Other',
+          points: [
+            'Language support for Bahasa Indonesia, English, and Klingon (partially implemented).',
+            'Themes dark, light, and cute (partially implemented).',
+            'Data Menu includes: export data, import data, and cloud sync (placeholders for now).',
+            'Added About section containing app info and devlog.',
+          ],
+        },
+      ],
+    },
+  ];
+
   return (
     <div className={`fixed inset-0 bg-slate-950 z-50 ${animationClass}`}>
       <div className="p-6 text-slate-300 leading-relaxed overflow-y-auto h-full">
         <h1 className="text-3xl font-bold text-fuchsia-400 mb-4 font-serif">About Kairo</h1>
         <p className="mb-4">
-          Kairo is an all-in-one management app designed to help you live better. It brings together everything you need in one place: Multi-Calendar, Harmonized To-Do, Linked Notes, Habit Tracker, and Finance Manager.
+          Kairo is an all-in-one management app designed to help you live better. It brings together everything you need in one place: Multi Calendar, Synced Tasks, Organized Notes, Tracked Habit, and Clear Finance.
         </p>
         <p className="mb-4">
           The name Kairo comes from the ancient Greek word “Kairos”, which means the right moment. Every moment becomes the right one, because you’vemanaged it well with Kairo.
@@ -42,71 +177,45 @@ const AboutOverlay: React.FC<AboutOverlayProps> = ({ isOpen, onClose }) => {
 
         <h2 className="text-3xl font-bold text-fuchsia-400 mb-4 font-serif">Dev Log</h2>
         
-        <h3 className="text-xl font-semibold text-slate-100 mb-3">Kairo v1.0</h3>
-        <ul className="list-disc list-inside space-y-4 text-slate-300">
-          <li>
-            <strong>Core Experience:</strong>
-            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-slate-400">
-              <li>Responsive, mobile-first design with a clean, modern UI.</li>
-              <li>Persistent data storage using the browser's local storage.</li>
-              <li>Multi-Language Support (English, Bahasa Indonesia, and Klingon).</li>
-              <li>Personalizable Themes: Choose from Dark, Light, or Cute themes.</li>
-              <li>Data Management: Securely export and import all your data via JSON files.</li>
-              <li>Intuitive bottom navigation for quick access to all features.</li>
-            </ul>
-          </li>
-          <li>
-            <strong>Calendar:</strong>
-            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-slate-400">
-              <li>Multi-Calendar Management: Create, update, and delete calendars with custom colors.</li>
-              <li>Central "Overview" calendar to see all events in one place.</li>
-              <li>Interactive monthly grid view with event indicators.</li>
-              <li>Recurring Events: Schedule events to repeat daily, weekly, monthly, or yearly.</li>
-              <li>Flexible Event Management: Create, edit, and delete events with details like name, description, time, and color.</li>
-              <li>Detailed Event List: View a sorted list of events for the selected day or month.</li>
-            </ul>
-          </li>
-          <li>
-            <strong>To-Do List:</strong>
-            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-slate-400">
-              <li>Harmonized Task View: Filter your to-do list by calendar.</li>
-              <li>Event-Linked Tasks: Associate tasks with specific calendar events for better organization.</li>
-              <li>Smart Grouping: Tasks are automatically grouped by event or as "General Tasks".</li>
-              <li>Detailed Tasks: Add a name, description, due date, urgency level (Low, Medium, High), and a custom color.</li>
-              <li>Efficient Sorting: Completed tasks and fully completed groups automatically move to the bottom.</li>
-            </ul>
-          </li>
-           <li>
-            <strong>Notes:</strong>
-            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-slate-400">
-                <li>Rich Text Editor: Format notes with bold, italics, underline, lists, links, colors, and font sizes.</li>
-                <li>Folder Organization: Group notes into folders, which are seamlessly integrated with your calendars.</li>
-                <li>Powerful Tagging System: Create custom tags, add multiple tags to notes, and filter your note list by one or more tags.</li>
-                <li>Unsaved Changes Warning: Never lose your work accidentally.</li>
-            </ul>
-          </li>
-          <li>
-            <strong>Habit Tracker:</strong>
-            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-slate-400">
-              <li>Customizable Habits: Create, edit, and delete habits with custom names, descriptions, and colors.</li>
-              <li>Category Management: Organize habits into personalized categories.</li>
-              <li>Flexible Tracking: Supports both "Yes/No" (checkbox) and "Number" (unit-based) habits.</li>
-              <li>Weekly View: Easily log your progress for the current week.</li>
-              <li>Monthly Archive: Dive deep into any habit with a full calendar view of your historical performance.</li>
-            </ul>
-          </li>
-          <li>
-            <strong>Finance Manager:</strong>
-            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-slate-400">
-              <li>Multi-Wallet Support: Manage multiple accounts (e.g., cash, bank) with custom icons and colors.</li>
-              <li>Central "Overview" wallet to see all transactions combined.</li>
-              <li>Dynamic Categories: Create income and expense categories on the fly while adding transactions.</li>
-              <li>Comprehensive Summary: Instantly see your income, expenses, and current balance for any period.</li>
-              <li>Advanced Filtering: Filter transaction history by wallet, time period (day, week, month, year, custom range), and by category.</li>
-              <li>Organized Category Selection: Filter and selection dropdowns group categories by "Income" and "Expenses".</li>
-            </ul>
-          </li>
-        </ul>
+        <div className="space-y-2">
+            {devLogs.map(log => {
+                const isExpanded = expandedLogs.includes(log.title);
+                const logId = log.title.replace(/\s+/g, '-');
+                return (
+                    <div key={log.title} className="border-b" style={{ borderColor: 'var(--border-color)' }}>
+                        <button
+                            onClick={() => toggleLog(log.title)}
+                            className="w-full text-left flex justify-between items-center py-3"
+                            aria-expanded={isExpanded}
+                            aria-controls={`log-content-${logId}`}
+                        >
+                            <h3 className="text-xl font-semibold text-slate-100">{log.title}</h3>
+                            <i className={`fa-solid fa-chevron-down transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} style={{ color: 'var(--text-secondary)' }}></i>
+                        </button>
+                        <div
+                            id={`log-content-${logId}`}
+                            className="transition-all duration-500 ease-in-out overflow-hidden"
+                            style={{ maxHeight: isExpanded ? '3000px' : '0px' }}
+                        >
+                            <div className="pt-2 pb-4">
+                                <p className="mb-4 text-slate-400">{log.description}</p>
+                                <ul className="list-disc list-inside space-y-4 text-slate-300">
+                                    {log.items.map(item => (
+                                        <li key={item.title}>
+                                            <strong>{item.title}</strong>
+                                            <ul className="list-disc list-inside ml-6 mt-1 space-y-1 text-slate-400">
+                                                {item.points.map(point => <li key={point}>{point}</li>)}
+                                            </ul>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+
 
         <div className="mt-12 text-center pb-8">
           <button onClick={handleClose} className="btn btn-primary px-8 py-3 text-lg">

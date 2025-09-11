@@ -6,8 +6,6 @@ import { COLORS } from '../constants';
 import CustomSelect from './CustomSelect';
 import { toYYYYMMDD } from '../utils';
 
-const LABEL_STYLE = "block text-sm font-medium text-slate-400 mb-1";
-
 interface TaskFormModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -20,6 +18,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
   const { events, calendars, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
   const [formData, setFormData] = useState<Partial<TTask>>({});
   const [syncCalendarId, setSyncCalendarId] = useState<string | null>(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   const isEditing = !!initialData?.id;
 
@@ -39,6 +38,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
 
       const eventForTask = data.eventId ? events.find(e => e.id === data.eventId) : null;
       setSyncCalendarId(eventForTask ? eventForTask.calendarId : null);
+      setShowConfirmDelete(false);
     }
   }, [isOpen, initialData, calendars, events]);
 
@@ -52,9 +52,10 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
     onSave(formData);
   };
   
-  const handleDelete = () => {
+  const handleConfirmDelete = () => {
     if (formData.id) {
         onDelete(formData.id);
+        setShowConfirmDelete(false);
     }
   }
 
@@ -121,73 +122,102 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
   ];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit Task' : 'Add Task'}>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="taskName" className={LABEL_STYLE}>Task Name</label>
-          <input id="taskName" type="text" placeholder="Task Name" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
-        </div>
-        <div>
-          <label htmlFor="description" className={LABEL_STYLE}>Description</label>
-          <textarea id="description" placeholder="(Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-24 resize-none"></textarea>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-            <div>
-                <label htmlFor="dueDate" className={LABEL_STYLE}>Due Date</label>
-                <input id="dueDate" type="date" value={formData.dueDate || ''} onChange={e => handleChange('dueDate', e.target.value)} className="form-input" />
-            </div>
-            <div>
-                <label className={LABEL_STYLE}>Urgency</label>
-                <CustomSelect 
-                    options={urgencyOptions} 
-                    value={formData.urgency || 'none'} 
-                    onChange={(v) => handleChange('urgency', v === 'none' ? undefined : v)} 
-                />
-            </div>
-        </div>
-        <div>
-          <label className={LABEL_STYLE}>Choose a Calendar to Sync</label>
-          <CustomSelect 
-            options={[{value: 'none', label: 'No Calendar Sync'}, ...syncCalendarOptions]} 
-            value={syncCalendarId || 'none'} 
-            onChange={(v) => {
-                const newSyncId = v === 'none' ? null : v;
-                setSyncCalendarId(newSyncId);
-                if (!newSyncId) {
-                    handleChange('eventId', undefined);
-                }
-            }}
-          />
-        </div>
-        {syncCalendarId && (
-            <div>
-              <label className={LABEL_STYLE}>Link to Event</label>
-              <CustomSelect 
-                options={eventOptions} 
-                value={formData.eventId || 'none'} 
-                onChange={(v) => handleChange('eventId', v === 'none' ? undefined : v)} 
-              />
-              <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>
-                Only events on the task's due date will appear.
-              </p>
-            </div>
-        )}
-        <div>
-          <label className={LABEL_STYLE}>Color</label>
-          <div className="grid grid-cols-7 gap-2">
-            {COLORS.map(c => (
-              <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-offset-slate-900 ring-white' : ''}`} style={{ backgroundColor: c }}></button>
-            ))}
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit Task' : 'Add New Task'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="flex items-center gap-3">
+              <i className="fa-solid fa-pen-nib w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+              <div className="flex-grow">
+                  <input id="taskName" type="text" placeholder="Task Name (Required)" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
+              </div>
           </div>
-        </div>
-        <div className="flex gap-2 pt-2">
-          {isEditing && (
-            <button type="button" onClick={handleDelete} className="btn btn-danger">Delete</button>
+
+          <div className="flex items-start gap-3">
+              <i className="fa-solid fa-paragraph w-6 text-center text-lg pt-2" style={{color: 'var(--text-secondary)'}}></i>
+              <div className="flex-grow">
+                  <textarea id="description" placeholder="Description (Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-24 resize-none"></textarea>
+              </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+              <i className="fa-solid fa-calendar-day w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+              <div className="flex-grow grid grid-cols-2 gap-4">
+                  <input id="dueDate" type="date" title="Due Date" value={formData.dueDate || ''} onChange={e => handleChange('dueDate', e.target.value)} className="form-input" />
+                  <CustomSelect 
+                      options={urgencyOptions} 
+                      value={formData.urgency || 'none'} 
+                      onChange={(v) => handleChange('urgency', v === 'none' ? undefined : v)} 
+                  />
+              </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <i className="fa-solid fa-link w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+            <div className="flex-grow">
+              <CustomSelect 
+                options={[{value: 'none', label: 'No Calendar Sync'}, ...syncCalendarOptions]} 
+                value={syncCalendarId || 'none'} 
+                onChange={(v) => {
+                    const newSyncId = v === 'none' ? null : v;
+                    setSyncCalendarId(newSyncId);
+                    if (!newSyncId) {
+                        handleChange('eventId', undefined);
+                    }
+                }}
+              />
+            </div>
+          </div>
+
+          {syncCalendarId && (
+              <div className="flex items-center gap-3">
+                <i className="fa-solid fa-calendar-check w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                  <CustomSelect 
+                    options={eventOptions} 
+                    value={formData.eventId || 'none'} 
+                    onChange={(v) => handleChange('eventId', v === 'none' ? undefined : v)} 
+                  />
+                  <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>
+                    Only events on the task's due date will appear.
+                  </p>
+                </div>
+              </div>
           )}
-          <button type="submit" disabled={!formData.name?.trim()} className="flex-grow btn btn-primary">{isEditing ? 'Save Changes' : 'Save Task'}</button>
+
+          <div className="flex items-start gap-3">
+            <i className="fa-solid fa-palette w-6 text-center text-lg pt-1" style={{color: 'var(--text-secondary)'}}></i>
+            <div className="flex-grow">
+              <div className="grid grid-cols-7 gap-2">
+                {COLORS.map(c => (
+                  <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            {isEditing && (
+              <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>
+            )}
+            <button type="submit" disabled={!formData.name?.trim()} className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Are you sure?">
+        <div className="text-center">
+            <p className="mb-4" style={{color: 'var(--text-secondary)'}}>This action will permanently delete this task and cannot be undone.</p>
+            <div className="pt-2">
+                <button 
+                    onClick={handleConfirmDelete}
+                    className="w-full btn btn-danger"
+                >
+                    Yes
+                </button>
+            </div>
         </div>
-      </form>
-    </Modal>
+      </Modal>
+    </>
   );
 };
 
