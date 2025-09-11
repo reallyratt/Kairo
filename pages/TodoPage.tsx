@@ -1,10 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { useAppContext, useTranslation } from '../context/AppContext';
-import { TTask, TEvent, Urgency } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAppContext } from '../context/AppContext';
+import { TTask, TEvent, Urgency, TCalendar, TCalendarCategory } from '../types';
 import Header from '../components/Header';
 import { dateFromYYYYMMDD } from '../utils';
 import TaskFormModal from '../components/TaskFormModal';
 import CustomSelect from '../components/CustomSelect';
+import Modal from '../components/Modal';
 
 // --- Sub-components for TodoPage ---
 
@@ -23,10 +24,11 @@ const UrgencyTag: React.FC<{ urgency: Urgency }> = ({ urgency }) => {
 };
 
 // Task Item Component
-const TaskItem: React.FC<{ task: TTask; onToggle: (id: string) => void; onEdit: (task: TTask) => void }> = ({ task, onToggle, onEdit }) => {
+const TaskItem: React.FC<{ task: TTask; calendars: TCalendar[]; onToggle: (id: string) => void; onEdit: (task: TTask) => void }> = ({ task, calendars, onToggle, onEdit }) => {
+  const calendar = calendars.find(c => c.id === task.calendarId);
+
   return (
-    // FIX: Cast style object to React.CSSProperties to allow custom CSS properties.
-    <div className={`flex items-start gap-3 p-2 rounded-lg transition-all duration-300 ease-in-out hover:bg-slate-800/50 ${task.completed ? 'opacity-50 scale-[0.98]' : 'opacity-100 scale-100'}`} style={{'--tw-hover-bg-opacity': 0.5, '--tw-hover-bg': 'var(--bg-tertiary)'} as React.CSSProperties}>
+    <div className={`flex items-start gap-3 p-2 rounded-lg transition-all duration-300 ease-in-out hover:bg-slate-800/50 ${task.completed ? 'opacity-50' : 'opacity-100'}`} style={{'--tw-hover-bg-opacity': 0.5, '--tw-hover-bg': 'var(--bg-tertiary)'} as React.CSSProperties}>
         <div className="w-1.5 self-stretch shrink-0 rounded-full" style={{backgroundColor: task.color}}></div>
         
         <div className="flex-grow cursor-pointer" onClick={() => onEdit(task)}>
@@ -34,23 +36,31 @@ const TaskItem: React.FC<{ task: TTask; onToggle: (id: string) => void; onEdit: 
                 <span className={`transition-all duration-300 ${task.completed ? 'line-through text-slate-500' : 'text-slate-100 font-medium'}`} style={{color: task.completed ? 'var(--text-tertiary)' : 'var(--text-primary)'}}>
                     {task.name}
                 </span>
-                {task.urgency && <UrgencyTag urgency={task.urgency} />}
+                <div className="flex items-center gap-2 flex-shrink-0">
+                    {task.urgency && <UrgencyTag urgency={task.urgency} />}
+                    <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-all duration-200 transform hover:scale-110`} style={{
+                        backgroundColor: task.completed ? 'var(--accent-primary)' : 'transparent',
+                        borderColor: task.completed ? 'var(--accent-primary)' : 'var(--text-tertiary)'
+                    }}>
+                        {task.completed && <i className="fa-solid fa-check text-xs" style={{color: 'var(--accent-text)'}}></i>}
+                    </button>
+                </div>
             </div>
+
+            {calendar && (
+                <p className="text-xs mt-1 flex items-center gap-1.5" style={{color: calendar.color, opacity: 0.8}}>
+                    <i className="fa-solid fa-calendar-days text-xs"></i>
+                    <span>{calendar.name}</span>
+                </p>
+            )}
+
             {task.description && <p className="text-sm mt-1" style={{color: 'var(--text-secondary)'}}>{task.description}</p>}
+            
             {task.dueDate && 
                 <p className="text-xs font-mono mt-1" style={{color: 'var(--text-tertiary)'}}>
                     Due: {dateFromYYYYMMDD(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                 </p>
             }
-        </div>
-        
-        <div className="flex-shrink-0 pt-1">
-            <button onClick={(e) => { e.stopPropagation(); onToggle(task.id); }} className={`w-5 h-5 rounded-md flex items-center justify-center border-2 transition-all duration-200 transform hover:scale-110`} style={{
-                backgroundColor: task.completed ? 'var(--accent-primary)' : 'transparent',
-                borderColor: task.completed ? 'var(--accent-primary)' : 'var(--text-tertiary)'
-            }}>
-                {task.completed && <i className="fa-solid fa-check text-xs" style={{color: 'var(--accent-text)'}}></i>}
-            </button>
         </div>
     </div>
   );
@@ -60,13 +70,31 @@ const TaskItem: React.FC<{ task: TTask; onToggle: (id: string) => void; onEdit: 
 // --- Main TodoPage Component ---
 
 function TodoPage() {
-  const { tasks, calendars, events, setTasks } = useAppContext();
-  const { t } = useTranslation();
+  const { tasks, calendars, events, setTasks, activeAction, setActiveAction, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
   const [selectedCalendarId, setSelectedCalendarId] = useState('overview');
+  type SortType = 'default' | 'date' | 'alpha' | 'urgency' | 'modified' | 'created';
+  const [sortBy, setSortBy] = useState<SortType>('default');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TTask | null>(null);
+  const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    if (activeAction === 'todo') {
+      openAddTaskModal();
+      setActiveAction(null);
+    }
+  }, [activeAction, setActiveAction]);
 
   const openAddTaskModal = () => {
+    if (selectedCalendarId === 'overview') {
+        const firstUserCalendar = calendars.find(c => c.id !== 'overview');
+        if (firstUserCalendar) {
+            setSelectedCalendarId(firstUserCalendar.id);
+        } else {
+            // No calendar to add to, so do nothing. Maybe add an alert later.
+            return;
+        }
+    }
     setEditingTask(null);
     setIsModalOpen(true);
   };
@@ -77,17 +105,22 @@ function TodoPage() {
   };
 
   const handleSaveTask = (taskData: Partial<TTask>) => {
+    const now = new Date().toISOString();
     if (taskData.id) { // Editing
-      setTasks(prev => prev.map(t => t.id === taskData.id ? { ...t, ...taskData } as TTask : t));
+      setTasks(prev => prev.map(t => t.id === taskData.id ? { ...t, ...taskData, updatedAt: now } as TTask : t));
     } else { // Adding
-      if (selectedCalendarId === 'overview') return;
+      const activeCalendarId = selectedCalendarId === 'overview' ? (calendars.find(c => c.id !== 'overview')?.id) : selectedCalendarId;
+      if (!activeCalendarId) return; // Cannot add task if no user calendar exists
+
       const newTask: TTask = {
           name: 'Untitled Task',
           completed: false,
-          color: calendars.find(c => c.id === selectedCalendarId)?.color || '#f472b6',
+          color: calendars.find(c => c.id === activeCalendarId)?.color || '#f472b6',
           ...taskData,
           id: Date.now().toString(),
-          calendarId: selectedCalendarId,
+          calendarId: activeCalendarId,
+          createdAt: now,
+          updatedAt: now,
       } as TTask;
       setTasks(prev => [...prev, newTask]);
     }
@@ -100,115 +133,214 @@ function TodoPage() {
   }
 
   const toggleTask = (taskId: string) => {
+    const now = new Date().toISOString();
     setTasks(prevTasks => 
       prevTasks.map(task => 
-        task.id === taskId ? { ...task, completed: !task.completed } : task
+        task.id === taskId ? { ...task, completed: !task.completed, updatedAt: now } : task
       )
     );
+  };
+  
+  const handleClearCompleted = () => {
+    setTasks(prev => prev.filter(t => !t.completed));
+    setIsClearConfirmOpen(false);
   };
 
   const visibleTasks = useMemo(() => {
     if (selectedCalendarId === 'overview') return tasks;
     return tasks.filter(t => t.calendarId === selectedCalendarId);
   }, [tasks, selectedCalendarId]);
+  
+  const { uncheckedTasks, checkedTasks } = useMemo(() => ({
+    uncheckedTasks: visibleTasks.filter(t => !t.completed),
+    checkedTasks: visibleTasks.filter(t => t.completed),
+  }), [visibleTasks]);
 
-  const allSortedGroups = useMemo(() => {
-    type TaskGroup = {
-      id: string;
-      event: TEvent | null;
-      tasks: TTask[];
-    };
-    
-    const groups: { [key: string]: TaskGroup } = {}; // key is eventId or 'general'
+  const sortedUncheckedTasks = useMemo(() => {
+    if (sortBy === 'default') return [];
 
-    visibleTasks.forEach(task => {
-      const groupId = task.eventId || 'general';
-      if (!groups[groupId]) {
-        const event = task.eventId ? events.find(e => e.id === task.eventId) || null : null;
-        groups[groupId] = { id: groupId, event, tasks: [] };
-      }
-      groups[groupId].tasks.push(task);
+    const urgencyRank = { [Urgency.High]: 3, [Urgency.Medium]: 2, [Urgency.Low]: 1 };
+    const sorted = [...uncheckedTasks];
+
+    switch (sortBy) {
+        case 'date':
+            sorted.sort((a, b) => {
+                if (!a.dueDate && !b.dueDate) return 0;
+                if (!a.dueDate) return 1;
+                if (!b.dueDate) return -1;
+                return a.dueDate.localeCompare(b.dueDate);
+            });
+            break;
+        case 'alpha':
+            sorted.sort((a, b) => a.name.localeCompare(b.name));
+            break;
+        case 'urgency':
+            sorted.sort((a, b) => (urgencyRank[b.urgency!] || 0) - (urgencyRank[a.urgency!] || 0));
+            break;
+        case 'modified':
+            sorted.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+            break;
+        case 'created':
+            sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            break;
+    }
+    return sorted;
+  }, [sortBy, uncheckedTasks]);
+
+  const sortedCheckedTasks = useMemo(() => {
+    return [...checkedTasks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [checkedTasks]);
+
+  const groupAndSortTasks = (tasksToProcess: TTask[]): { id: string; event: TEvent | null; tasks: TTask[] }[] => {
+    type TaskGroup = { id: string; event: TEvent | null; tasks: TTask[] };
+    const groups: { [key: string]: TaskGroup } = {};
+
+    tasksToProcess.forEach(task => {
+        const groupId = task.eventId || 'general';
+        if (!groups[groupId]) {
+            const event = task.eventId ? events.find(e => e.id === task.eventId) || null : null;
+            groups[groupId] = { id: groupId, event, tasks: [] };
+        }
+        groups[groupId].tasks.push(task);
     });
-
+    
     const allGroupsAsArray = Object.values(groups);
 
-    // Sort tasks within each group (completed to bottom)
+    const urgencyRank = { [Urgency.High]: 3, [Urgency.Medium]: 2, [Urgency.Low]: 1 };
     allGroupsAsArray.forEach(group => {
-      group.tasks.sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0));
-    });
-
-    // Sort groups themselves (all-completed groups to bottom)
-    allGroupsAsArray.sort((a, b) => {
-      const allACompleted = a.tasks.length > 0 && a.tasks.every(t => t.completed);
-      const allBCompleted = b.tasks.length > 0 && b.tasks.every(t => t.completed);
-      return (allACompleted ? 1 : 0) - (allBCompleted ? 1 : 0);
+        group.tasks.sort((a, b) => (urgencyRank[b.urgency!] || 0) - (urgencyRank[a.urgency!] || 0));
     });
 
     return allGroupsAsArray;
-  }, [visibleTasks, events]);
+  };
+
+  const groupedUncheckedTasks = useMemo(() => groupAndSortTasks(uncheckedTasks), [uncheckedTasks, events]);
   
-  const calendarOptions = calendars.map(cal => ({ value: cal.id, label: cal.name }));
+  const calendarOptions = useMemo(() => {
+    const options: any[] = [{ value: 'overview', label: 'Overview', className: 'text-lg font-bold py-1' }];
+    
+    const userCalendars = calendars.filter(c => c.id !== 'overview');
+    const sortedCalendars = calendarOrder
+        .map(id => userCalendars.find(c => c.id === id))
+        .filter((c): c is TCalendar => !!c);
+    
+    const categorized = new Map<string, TCalendar[]>();
+    const uncategorized: TCalendar[] = [];
+
+    sortedCalendars.forEach(cal => {
+        if (cal.categoryId && calendarCategories.find(cat => cat.id === cal.categoryId)) {
+            if (!categorized.has(cal.categoryId)) {
+                categorized.set(cal.categoryId, []);
+            }
+            categorized.get(cal.categoryId)!.push(cal);
+        } else {
+            uncategorized.push(cal);
+        }
+    });
+    
+    uncategorized.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+    
+    if (uncategorized.length > 0 && categorized.size > 0) {
+        options.push({ isHeader: true, label: ' ' }); 
+    }
+
+    calendarCategoryOrder.forEach(catId => {
+        const cat = calendarCategories.find(c => c.id === catId);
+        if (cat) {
+            const cals = categorized.get(cat.id);
+            if (cals && cals.length > 0) {
+                options.push({ isHeader: true, label: cat.name });
+                cals.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+            }
+        }
+    });
+
+    return options;
+  }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
+  
+  const sortOptions = [
+    { value: 'default', label: 'Default Grouping' },
+    { value: 'date', label: 'Sort by Due Date' },
+    { value: 'alpha', label: 'Sort by Name (A-Z)' },
+    { value: 'urgency', label: 'Sort by Urgency' },
+    { value: 'modified', label: 'Sort by Last Modified' },
+    { value: 'created', label: 'Sort by Date Created' },
+  ];
+
+  const renderTaskGroups = (groups: { id: string; event: TEvent | null; tasks: TTask[] }[]) => (
+    groups.map(({ id, event, tasks: groupTasks }) => {
+        if (groupTasks.length === 0) return null;
+        const isGeneralGroup = id === 'general';
+        let headerColor = 'var(--text-primary)';
+        let headerText = 'General Tasks';
+
+        if (!isGeneralGroup) {
+            headerText = event?.name || 'Linked Tasks';
+            if (event) {
+                headerColor = selectedCalendarId === 'overview' ? (calendars.find(c => c.id === event.calendarId)?.color || event.color) : event.color;
+            } else {
+                headerColor = 'var(--text-tertiary)';
+            }
+        }
+        return (
+            <div key={id} className="bg-slate-900 rounded-xl p-4" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                <h3 className="text-lg font-bold mb-2" style={{ color: headerColor }}>{headerText}</h3>
+                <div className="space-y-1">
+                    {groupTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
+                </div>
+            </div>
+        );
+    })
+  );
+
 
   return (
-    <div>
+    <div className="pb-20">
       <Header titleKey="header.todo" />
-      <div className="p-4 space-y-6">
-        {/* Calendar Selector */}
-        <CustomSelect 
-            options={calendarOptions}
-            value={selectedCalendarId}
-            onChange={setSelectedCalendarId}
-        />
+      <div className="p-4 space-y-4">
+        <div className="grid grid-cols-2 gap-2">
+            <CustomSelect 
+                options={calendarOptions}
+                value={selectedCalendarId}
+                onChange={setSelectedCalendarId}
+            />
+             <CustomSelect
+                options={sortOptions}
+                value={sortBy}
+                onChange={(v) => setSortBy(v as SortType)}
+            />
+        </div>
+        
+        <div className="space-y-4">
+            {uncheckedTasks.length > 0 && <h2 className="text-xl font-bold" style={{color: 'var(--accent-primary)'}}>Pending</h2>}
+            {uncheckedTasks.length === 0 ? (
+                <div className="text-center py-10 rounded-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                    <i className="fa-solid fa-check-double text-4xl mb-3" style={{color: 'var(--text-tertiary)'}}></i>
+                    <p style={{color: 'var(--text-secondary)'}}>No pending tasks. Great job!</p>
+                </div>
+            ) : sortBy === 'default' ? (
+                 renderTaskGroups(groupedUncheckedTasks)
+            ) : (
+                <div className="bg-slate-900 rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                    {sortedUncheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
+                </div>
+            )}
+        </div>
 
-        {/* Add Task Button */}
-        {selectedCalendarId !== 'overview' && (
-            <div className="text-center">
-                <button onClick={openAddTaskModal} className="btn btn-primary w-full max-w-xs">
-                    <i className="fa-solid fa-plus mr-2"></i>
-                    {t('todo.add')}
-                </button>
+        {sortedCheckedTasks.length > 0 && (
+            <div className="space-y-4">
+                 <div className="w-full h-px my-4" style={{backgroundColor: 'var(--border-color)'}}></div>
+                <div className="flex justify-between items-center">
+                    <h2 className="text-xl font-bold" style={{color: 'var(--accent-primary)'}}>Completed ({checkedTasks.length})</h2>
+                    <button onClick={() => setIsClearConfirmOpen(true)} className="btn btn-danger btn-icon" aria-label="Clear completed tasks">
+                        <i className="fa-solid fa-broom"></i>
+                    </button>
+                </div>
+                <div className="bg-slate-900 rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                    {sortedCheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
+                </div>
             </div>
         )}
-
-        {/* Task Groups */}
-        {allSortedGroups.length === 0 && (
-          <div className="text-center py-10 bg-slate-900 rounded-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
-            <i className="fa-solid fa-check-double text-4xl mb-3" style={{color: 'var(--text-tertiary)'}}></i>
-            <p style={{color: 'var(--text-secondary)'}}>No tasks here. Great job!</p>
-          </div>
-        )}
-
-        {allSortedGroups.map(({ id, event, tasks: groupTasks }) => {
-            if (groupTasks.length === 0) return null;
-
-            const isGeneralGroup = id === 'general';
-            
-            let headerColor = 'var(--text-primary)';
-            let headerText = 'General Tasks';
-
-            if (!isGeneralGroup) {
-                headerText = event?.name || 'Linked Tasks';
-                if (event) {
-                    if (selectedCalendarId === 'overview') {
-                        const cal = calendars.find(c => c.id === event.calendarId);
-                        headerColor = cal?.color || event.color;
-                    } else {
-                        headerColor = event.color;
-                    }
-                } else {
-                    headerColor = 'var(--text-tertiary)';
-                }
-            }
-
-            return (
-                <div key={id} className="bg-slate-900 rounded-xl p-4" style={{backgroundColor: 'var(--bg-secondary)'}}>
-                    <h3 className="text-lg font-bold mb-2" style={{ color: headerColor }}>{headerText}</h3>
-                    <div className="space-y-1">
-                        {groupTasks.map(task => <TaskItem key={task.id} task={task} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
-                    </div>
-                </div>
-            );
-        })}
       </div>
 
       <TaskFormModal 
@@ -218,6 +350,16 @@ function TodoPage() {
         onDelete={handleDeleteTask}
         initialData={editingTask || { calendarId: selectedCalendarId }}
       />
+      
+      <Modal isOpen={isClearConfirmOpen} onClose={() => setIsClearConfirmOpen(false)} title="Confirm Clear">
+            <div className="text-center">
+                <p className="mb-4" style={{color: 'var(--text-secondary)'}}>Are you sure you want to permanently delete all completed tasks?</p>
+                <div className="flex gap-2">
+                    <button onClick={() => setIsClearConfirmOpen(false)} className="flex-1 btn btn-secondary">Cancel</button>
+                    <button onClick={handleClearCompleted} className="flex-1 btn btn-danger">Clear</button>
+                </div>
+            </div>
+        </Modal>
     </div>
   );
 }

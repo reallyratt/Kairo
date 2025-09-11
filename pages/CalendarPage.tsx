@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppContext, useTranslation } from '../context/AppContext';
-import { TEvent, TCalendar } from '../types';
+import { TEvent, TCalendar, TCalendarCategory } from '../types';
 import Modal from '../components/Modal';
 import Header from '../components/Header';
 import { COLORS } from '../constants';
@@ -18,17 +18,19 @@ interface EventFormModalProps {
   onSave: (event: Partial<TEvent>, instruction: RepetitionType | EditScope) => void;
   onDelete: (eventId: string, scope: EditScope) => void;
   initialData?: Partial<TEvent>;
+  activeCalendarId: string;
 }
 
-const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
-  type View = 'form' | 'confirm_delete' | 'confirm_close';
+const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData, activeCalendarId }) => {
+  type View = 'form' | 'confirm_delete' | 'confirm_close' | 'confirm_save';
+  const { calendars, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
   const { lang } = useTranslation();
   const [formData, setFormData] = useState<Partial<TEvent>>({});
   const [repetition, setRepetition] = useState<RepetitionType>('none');
   const [view, setView] = useState<View>('form');
   const [animationClass, setAnimationClass] = useState('');
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const initialFormData = useRef<Partial<TEvent>>({});
-  // FIX: Initialize useRef with null to provide an initial value.
   const animationTimer = useRef<number | null>(null);
 
   const isEditing = !!initialData?.id;
@@ -48,6 +50,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
       const defaultStartTime = new Date();
       const defaultEndTime = new Date(defaultStartTime.getTime() + 60 * 60 * 1000);
       const formatTime = (date: Date) => `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+      const firstCalendarId = calendars.find(c => c.id !== 'overview')?.id || '';
 
       const data = {
         name: '',
@@ -56,7 +59,8 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
         startTime: formatTime(defaultStartTime),
         endTime: formatTime(defaultEndTime),
         color: COLORS[0],
-        ...initialData
+        ...initialData,
+        calendarId: initialData?.calendarId || (activeCalendarId === 'overview' ? firstCalendarId : activeCalendarId),
       };
       
       setFormData(data);
@@ -64,14 +68,52 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
       setRepetition('none');
       setView('form');
       setAnimationClass('animate-view-in');
+      setErrors({});
     }
     return () => {
         if(animationTimer.current) clearTimeout(animationTimer.current);
     }
-  }, [isOpen, initialData]);
+  }, [isOpen, initialData, activeCalendarId, calendars]);
 
-  const handleChange = (field: keyof Omit<TEvent, 'id' | 'calendarId'>, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+  useEffect(() => {
+    if (formData.startTime && formData.endTime) {
+        if (formData.endTime <= formData.startTime) {
+            setErrors(prev => ({ ...prev, time: 'End time must be after start time.' }));
+        } else {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors.time;
+                return newErrors;
+            });
+        }
+    }
+  }, [formData.startTime, formData.endTime]);
+
+
+  const handleChange = (field: keyof Omit<TEvent, 'id'> | 'calendarId', value: string) => {
+    if (errors[field as keyof typeof errors]) {
+        setErrors(prev => {
+            const newErrors = { ...prev };
+            delete newErrors[field as keyof typeof errors];
+            return newErrors;
+        });
+    }
+
+    setFormData(prev => {
+      const newData = { ...prev, [field]: value };
+      if (field === 'startTime') {
+        const [hours, minutes] = value.split(':').map(Number);
+        if (!isNaN(hours) && !isNaN(minutes)) {
+          const startTimeDate = new Date();
+          startTimeDate.setHours(hours, minutes, 0, 0);
+          startTimeDate.setHours(startTimeDate.getHours() + 1);
+          const endHours = startTimeDate.getHours().toString().padStart(2, '0');
+          const endMinutes = startTimeDate.getMinutes().toString().padStart(2, '0');
+          newData.endTime = `${endHours}:${endMinutes}`;
+        }
+      }
+      return newData;
+    });
   };
 
   const hasChanges = JSON.stringify(formData) !== JSON.stringify(initialFormData.current) || (repetition !== 'none' && !isEditing);
@@ -84,10 +126,29 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
     }
   };
 
+  const validateOnSubmit = (): boolean => {
+    const newErrors: { [key: string]: string } = { ...errors };
+    if (!formData.name?.trim()) newErrors.name = 'Event name is required.';
+    if (!isEditing && !formData.calendarId) newErrors.calendarId = 'Please select a calendar.';
+    if (!formData.date) newErrors.date = 'Date is required.';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name?.trim()) return;
-    onSave(formData, isEditing ? 'single' : repetition);
+    if (!validateOnSubmit()) return;
+
+    if (isEditing && isRecurring) {
+        changeView('confirm_save');
+    } else {
+        onSave(formData, isEditing ? 'single' : repetition);
+    }
+  };
+
+  const handleSaveWithScope = (scope: EditScope) => {
+    onSave(formData, scope);
   };
 
   const handleDelete = (scope: EditScope) => {
@@ -98,8 +159,9 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
   
   const getTitle = () => {
     switch(view) {
-        case 'confirm_delete': return 'Confirm Deletion';
+        case 'confirm_delete': return isRecurring ? 'Delete Recurring Event' : 'Are you sure?';
         case 'confirm_close': return 'Unsaved Changes';
+        case 'confirm_save': return 'Save Recurring Event';
         case 'form':
         default: return isEditing ? 'Edit Event' : 'Add Event';
     }
@@ -112,33 +174,91 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
     { value: 'monthly', label: 'Every Month' },
     { value: 'yearly', label: 'Every Year' },
   ];
+  
+  const calendarOptions = useMemo(() => {
+    const options: any[] = [];
+    const userCalendars = calendars.filter(c => c.id !== 'overview');
+    
+    const sortedCalendars = calendarOrder
+        .map(id => userCalendars.find(c => c.id === id))
+        .filter((c): c is TCalendar => !!c);
+    
+    const categorized = new Map<string, TCalendar[]>();
+    const uncategorized: TCalendar[] = [];
+
+    sortedCalendars.forEach(cal => {
+        if (cal.categoryId && calendarCategories.find(cat => cat.id === cal.categoryId)) {
+            if (!categorized.has(cal.categoryId)) {
+                categorized.set(cal.categoryId, []);
+            }
+            categorized.get(cal.categoryId)!.push(cal);
+        } else {
+            uncategorized.push(cal);
+        }
+    });
+    
+    uncategorized.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+    
+    if (uncategorized.length > 0 && categorized.size > 0) {
+        options.push({ isHeader: true, label: ' ' }); 
+    }
+
+    calendarCategoryOrder.forEach(catId => {
+        const cat = calendarCategories.find(c => c.id === catId);
+        if (cat) {
+            const cals = categorized.get(cat.id);
+            if (cals && cals.length > 0) {
+                options.push({ isHeader: true, label: cat.name });
+                cals.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+            }
+        }
+    });
+
+    return options;
+  }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
 
   return (
     <Modal isOpen={isOpen} onClose={handleCloseAttempt} title={getTitle()}>
       <div className={animationClass}>
         {view === 'form' && (
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {!isEditing && (
+                <div>
+                    <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Calendar</label>
+                    <CustomSelect
+                        options={calendarOptions}
+                        value={formData.calendarId || ''}
+                        onChange={val => handleChange('calendarId', val)}
+                    />
+                    {errors.calendarId && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.calendarId}</p>}
+                </div>
+            )}
             <div>
                 <label htmlFor="eventName" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Event Name</label>
-                <input id="eventName" type="text" placeholder="Event Name" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
+                <input id="eventName" type="text" placeholder="(required)" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
+                {errors.name && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.name}</p>}
             </div>
             <div>
                 <label htmlFor="description" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Description</label>
                 <textarea id="description" placeholder="(Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-24 resize-none"></textarea>
             </div>
-            <div className="grid grid-cols-2 gap-4">
-                <div>
-                    <label htmlFor="startTime" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Start Time</label>
-                    <input id="startTime" type="time" value={formData.startTime || ''} onChange={e => handleChange('startTime', e.target.value)} className="form-input" required />
+            <div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label htmlFor="startTime" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Start Time</label>
+                        <input id="startTime" type="time" value={formData.startTime || ''} onChange={e => handleChange('startTime', e.target.value)} className="form-input" required />
+                    </div>
+                    <div>
+                        <label htmlFor="endTime" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>End Time</label>
+                        <input id="endTime" type="time" value={formData.endTime || ''} onChange={e => handleChange('endTime', e.target.value)} className="form-input" required />
+                    </div>
                 </div>
-                <div>
-                    <label htmlFor="endTime" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>End Time</label>
-                    <input id="endTime" type="time" value={formData.endTime || ''} onChange={e => handleChange('endTime', e.target.value)} className="form-input" required />
-                </div>
+                {errors.time && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.time}</p>}
             </div>
             <div>
                 <label htmlFor="eventDate" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Date</label>
                 <input id="eventDate" type="date" value={formData.date || ''} onChange={e => handleChange('date', e.target.value)} className="form-input" required />
+                {errors.date && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.date}</p>}
             </div>
             <div className={`transition-all duration-300 ease-in-out ${isEditing ? 'max-h-0 opacity-0 overflow-hidden' : 'max-h-40 opacity-100 pt-1'}`}>
               <div>
@@ -150,7 +270,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
                 <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Color</label>
                 <div className="grid grid-cols-7 gap-2">
                     {COLORS.map(c => (
-                        // FIX: Replace `ringOffsetColor` with `--tw-ring-offset-color` and cast style object to `React.CSSProperties`.
                         <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
                     ))}
                 </div>
@@ -159,9 +278,20 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
               {isEditing && (
                   <button type="button" onClick={() => changeView('confirm_delete')} className="btn btn-danger">Delete</button>
               )}
-              <button type="submit" disabled={!formData.name?.trim()} className="flex-grow btn btn-primary">{isEditing ? 'Save Changes' : 'Save Event'}</button>
+              <button type="submit" className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
             </div>
           </form>
+        )}
+
+        {view === 'confirm_save' && (
+          <div className="space-y-4">
+            <p className="text-slate-300 mb-4 text-center" style={{color: 'var(--text-secondary)'}}>How would you like to save your changes?</p>
+            <div className="space-y-2">
+              <button type="button" onClick={() => handleSaveWithScope('single')} className="w-full btn btn-secondary">This event only</button>
+              <button type="button" onClick={() => handleSaveWithScope('future')} className="w-full btn btn-secondary">This and following events</button>
+              <button type="button" onClick={() => handleSaveWithScope('all')} className="w-full btn btn-secondary">All events in series</button>
+            </div>
+          </div>
         )}
 
         {view === 'confirm_delete' && (
@@ -174,16 +304,12 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
                           <button type="button" onClick={() => handleDelete('future')} className="w-full btn btn-secondary">This and following events</button>
                           <button type="button" onClick={() => handleDelete('all')} className="w-full btn btn-secondary">All events in series</button>
                       </div>
-                       <div className="mt-4">
-                          <button type="button" onClick={() => changeView('form')} className="w-full btn btn-danger">Cancel</button>
-                      </div>
                   </div>
               ) : (
                   <div className="text-center">
-                      <p className="text-slate-300" style={{color: 'var(--text-secondary)'}}>Are you sure? Deleting an event will also remove any associated tasks.</p>
-                      <div className="flex gap-2 pt-4">
-                          <button type="button" onClick={() => changeView('form')} className="flex-1 btn btn-secondary">Cancel</button>
-                          <button type="button" onClick={() => handleDelete('single')} className="flex-1 btn btn-danger">Confirm Delete</button>
+                      <p className="text-slate-300" style={{color: 'var(--text-secondary)'}}>Deleting an event will also remove any associated tasks.</p>
+                      <div className="pt-4">
+                          <button type="button" onClick={() => handleDelete('single')} className="w-full btn btn-danger">Yes</button>
                       </div>
                   </div>
               )}
@@ -204,18 +330,299 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
   )
 };
 
+// --- Unified Management Modal ---
+type ManagedItem = {
+    id: string;
+    type: 'category' | 'calendar';
+    data: TCalendarCategory | TCalendar;
+};
+const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen, onClose }) => {
+    const {
+        calendars, setCalendars,
+        calendarCategories, setCalendarCategories,
+        calendarOrder, setCalendarOrder,
+        calendarCategoryOrder, setCalendarCategoryOrder,
+        hiddenInOverview, setHiddenInOverview
+    } = useAppContext();
+    
+    const [managedItems, setManagedItems] = useState<ManagedItem[]>([]);
+    const [newCategoryName, setNewCategoryName] = useState('');
+    const [categoryError, setCategoryError] = useState('');
+    const [editingCategory, setEditingCategory] = useState<TCalendarCategory | null>(null);
+    const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+    
+    const [isDraggingCalendar, setIsDraggingCalendar] = useState(false);
+
+    const draggedItemIndex = useRef<number | null>(null);
+
+    // Build the unified list for management
+    useEffect(() => {
+        if (!isOpen) return;
+
+        setNewCategoryName('');
+        setCategoryError('');
+        setEditingCategory(null);
+
+        const finalRenderList: ManagedItem[] = [];
+        const calendarMap = new Map(calendars.map(c => [c.id, c]));
+
+        const calendarsToRender = calendarOrder
+            .map(id => calendarMap.get(id))
+            .filter((c): c is TCalendar => !!c && c.id !== 'overview');
+
+        const calendarsByCat = new Map<string, TCalendar[]>();
+        const uncategorized: TCalendar[] = [];
+
+        for (const cal of calendarsToRender) {
+            const categoryExists = cal.categoryId && calendarCategories.some(cat => cat.id === cal.categoryId);
+            if (cal.categoryId && categoryExists) {
+                if (!calendarsByCat.has(cal.categoryId)) {
+                    calendarsByCat.set(cal.categoryId, []);
+                }
+                calendarsByCat.get(cal.categoryId)!.push(cal);
+            } else {
+                uncategorized.push(cal);
+            }
+        }
+        
+        // Add uncategorized calendars first to display them at the top
+        uncategorized.forEach(cal => {
+            finalRenderList.push({ id: cal.id, type: 'calendar', data: cal });
+        });
+
+        const categoryMap = new Map(calendarCategories.map(c => [c.id, c]));
+        calendarCategoryOrder.forEach(catId => {
+            const category = categoryMap.get(catId);
+            if (category) {
+                finalRenderList.push({ id: category.id, type: 'category', data: category });
+                const cals = calendarsByCat.get(catId) || [];
+                cals.forEach(cal => {
+                    finalRenderList.push({ id: cal.id, type: 'calendar', data: cal });
+                });
+            }
+        });
+
+        setManagedItems(finalRenderList);
+    }, [isOpen, calendars, calendarCategories, calendarOrder, calendarCategoryOrder]);
+
+    const updateGlobalState = (items: ManagedItem[]) => {
+        const newCalendarOrder: string[] = [];
+        const newCategoryOrder: string[] = [];
+        const updatedCalendars = [...calendars];
+
+        let currentCategoryId: string | undefined = undefined;
+
+        items.forEach(item => {
+            if (item.type === 'category') {
+                currentCategoryId = item.id;
+                newCategoryOrder.push(item.id);
+            } else {
+                newCalendarOrder.push(item.id);
+                const calIndex = updatedCalendars.findIndex(c => c.id === item.id);
+                if (calIndex > -1) {
+                    updatedCalendars[calIndex].categoryId = currentCategoryId;
+                }
+            }
+        });
+
+        setCalendarOrder(newCalendarOrder);
+        setCalendarCategoryOrder(newCategoryOrder);
+        setCalendars(updatedCalendars);
+    };
+    
+    const handleAddCategory = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newCategoryName.trim()) {
+            const newCat = { id: Date.now().toString(), name: newCategoryName.trim() };
+            setCalendarCategories(prev => [...prev, newCat]);
+            setCalendarCategoryOrder(prev => [newCat.id, ...prev]);
+            setNewCategoryName('');
+            setCategoryError('');
+        } else {
+            setCategoryError('Category name cannot be empty.');
+        }
+    };
+
+    const handleUpdateCategory = () => {
+        if (editingCategory && editingCategory.name.trim()) {
+            setCalendarCategories(prev => prev.map(c => c.id === editingCategory.id ? { ...c, name: editingCategory.name.trim() } : c));
+            setEditingCategory(null);
+        } else {
+            setEditingCategory(null); // Cancel edit if name is empty
+        }
+    };
+    
+    const handleDeleteCategory = (id: string) => {
+        setCalendarCategories(prev => prev.filter(c => c.id !== id));
+        setCalendars(prev => prev.map(cal => cal.categoryId === id ? { ...cal, categoryId: undefined } : cal));
+    };
+    
+    const handleVisibilityToggle = (calendarId: string) => {
+        setHiddenInOverview(prev => 
+            prev.includes(calendarId) 
+                ? prev.filter(id => id !== calendarId) 
+                : [...prev, calendarId]
+        );
+    };
+    
+    const handleDragStart = (e: React.DragEvent, index: number) => {
+        const item = managedItems[index];
+        draggedItemIndex.current = index;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', item.id);
+    
+        setTimeout(() => {
+            setDraggedItemId(item.id);
+            if (item.type === 'calendar') {
+                setIsDraggingCalendar(true);
+            }
+        }, 0);
+    };
+
+    const handleDrop = (e: React.DragEvent, dropIndex: number) => {
+        e.preventDefault();
+        const dragIndex = draggedItemIndex.current;
+        
+        if (dragIndex === null || dragIndex === dropIndex) return;
+
+        const listCopy = [...managedItems];
+        const draggedItem = listCopy[dragIndex];
+
+        const dropItem = listCopy[dropIndex];
+        const isDropTargetUncategorized = dropItem.type === 'calendar' && !calendars.find(c => c.id === dropItem.id)?.categoryId;
+        if (draggedItem.type === 'category' && isDropTargetUncategorized) return;
+
+        listCopy.splice(dragIndex, 1);
+        listCopy.splice(dropIndex, 0, draggedItem);
+        
+        updateGlobalState(listCopy);
+    };
+
+    const handleUncategorizeDrop = (e: React.DragEvent) => {
+        e.preventDefault();
+        if (draggedItemIndex.current === null) return;
+    
+        const listCopy = [...managedItems];
+        const [draggedItemContent] = listCopy.splice(draggedItemIndex.current, 1);
+    
+        if (draggedItemContent.type === 'calendar') {
+            listCopy.unshift(draggedItemContent);
+            updateGlobalState(listCopy);
+        }
+    };
+
+    const handleDragEnd = () => {
+        setDraggedItemId(null);
+        draggedItemIndex.current = null;
+        setIsDraggingCalendar(false);
+    };
+    
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+    };
+
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} title="Manage">
+            <div 
+                className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 rounded-lg transition-all"
+                onDragOver={isDraggingCalendar ? handleDragOver : undefined}
+                onDrop={isDraggingCalendar ? handleUncategorizeDrop : undefined}
+            >
+                <form onSubmit={handleAddCategory} className="flex gap-2">
+                    <input type="text" placeholder="New category name" value={newCategoryName} onChange={e => { setNewCategoryName(e.target.value); if(categoryError) setCategoryError(''); }} className="form-input flex-grow" />
+                    <button type="submit" className="btn btn-primary btn-icon flex-shrink-0" aria-label="Add Category"><i className="fa-solid fa-plus"></i></button>
+                </form>
+                {categoryError && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{categoryError}</p>}
+
+                <p className="text-xs" style={{color: 'var(--text-secondary)'}}>Drag and drop to reorder calendars and assign them to categories.</p>
+
+                <div className="space-y-2">
+                    {managedItems.map((item, index) => {
+                        const isBeingDragged = draggedItemId === item.id;
+                        if (item.type === 'category') {
+                            const category = item.data as TCalendarCategory;
+                            return (
+                                <div 
+                                    key={category.id} 
+                                    className={`flex items-center gap-2 p-2 rounded-md cursor-grab active:cursor-grabbing ${isBeingDragged ? 'dragging' : ''}`}
+                                    style={{backgroundColor: 'var(--bg-tertiary)'}}
+                                    draggable
+                                    onDragStart={e => handleDragStart(e, index)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={e => { e.stopPropagation(); handleDrop(e, index); }}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <i className="fa-solid fa-grip-vertical" style={{color: 'var(--text-tertiary)'}}></i>
+                                    {editingCategory?.id === category.id ? (
+                                        <input
+                                            type="text"
+                                            value={editingCategory.name}
+                                            onChange={(e) => setEditingCategory({ ...editingCategory, name: e.target.value })}
+                                            onBlur={handleUpdateCategory}
+                                            onKeyDown={e => { if (e.key === 'Enter') handleUpdateCategory(); if (e.key === 'Escape') setEditingCategory(null); }}
+                                            className="form-input flex-grow text-lg font-bold p-1 h-auto"
+                                            autoFocus
+                                        />
+                                    ) : (
+                                      <span className="flex-grow font-bold text-lg">{category.name}</span>
+                                    )}
+                                    <button onClick={() => setEditingCategory(category)} className="btn btn-secondary btn-icon text-xs" aria-label="Rename Category"><i className="fa-solid fa-pencil"></i></button>
+                                    <button onClick={() => handleDeleteCategory(category.id)} className="btn btn-danger btn-icon text-xs" aria-label="Delete Category"><i className="fa-solid fa-trash"></i></button>
+                                </div>
+                            )
+                        } else {
+                            const cal = item.data as TCalendar;
+                            const isUncategorized = !cal.categoryId || !calendarCategories.some(c => c.id === cal.categoryId);
+                            return (
+                                <div
+                                    key={cal.id} 
+                                    className={`flex items-center gap-3 p-2 rounded-md cursor-grab active:cursor-grabbing ${isUncategorized ? '' : 'ml-4'} ${isBeingDragged ? 'dragging' : ''}`}
+                                    style={{backgroundColor: 'var(--bg-quaternary)'}}
+                                    draggable
+                                    onDragStart={e => handleDragStart(e, index)}
+                                    onDragOver={handleDragOver}
+                                    onDrop={e => { e.stopPropagation(); handleDrop(e, index); }}
+                                    onDragEnd={handleDragEnd}
+                                >
+                                    <i className="fa-solid fa-grip-vertical" style={{color: 'var(--text-tertiary)'}}></i>
+                                     <input 
+                                        type="checkbox" 
+                                        checked={!hiddenInOverview.includes(cal.id)} 
+                                        onChange={() => handleVisibilityToggle(cal.id)}
+                                        className="w-5 h-5 rounded accent-fuchsia-500 bg-slate-600 flex-shrink-0"
+                                        style={{accentColor: 'var(--accent-primary)'}}
+                                    />
+                                    <span className="flex-grow font-semibold truncate" style={{color: cal.color}}>{cal.name}</span>
+                                </div>
+                            )
+                        }
+                    })}
+                </div>
+            </div>
+        </Modal>
+    );
+};
+
 
 // --- Main Calendar Page ---
 function CalendarPage() {
-  const { calendars, setCalendars, events, setEvents, tasks, setTasks } = useAppContext();
+  const { calendars, setCalendars, events, setEvents, tasks, setTasks, activeAction, setActiveAction, calendarCategories, calendarOrder, setCalendarOrder, hiddenInOverview, setHiddenInOverview, calendarCategoryOrder, setCalendarCategoryOrder } = useAppContext();
   const { t, lang } = useTranslation();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedCalendarId, setSelectedCalendarId] = useState('overview');
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isAddCalendarModalOpen, setIsAddCalendarModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  const [isManageOverviewOpen, setIsManageOverviewOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
   const [editingEvent, setEditingEvent] = useState<TEvent | null>(null);
+
+  useEffect(() => {
+    if (activeAction === 'calendar') {
+      openAddEventModal();
+      setActiveAction(null);
+    }
+  }, [activeAction, setActiveAction]);
 
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -234,7 +641,7 @@ function CalendarPage() {
   const eventsByDay = useMemo(() => {
     const map = new Map<string, TEvent[]>();
     const relevantEvents = selectedCalendarId === 'overview'
-      ? events
+      ? events.filter(e => !hiddenInOverview.includes(e.calendarId))
       : events.filter(e => e.calendarId === selectedCalendarId);
 
     relevantEvents.forEach(event => {
@@ -243,7 +650,7 @@ function CalendarPage() {
       map.get(day)?.push(event);
     });
     return map;
-  }, [events, selectedCalendarId]);
+  }, [events, selectedCalendarId, hiddenInOverview]);
 
   const displayedEvents = useMemo(() => {
     if (selectedDate) {
@@ -253,7 +660,7 @@ function CalendarPage() {
     }
 
     const relevantEvents = selectedCalendarId === 'overview'
-        ? events
+        ? events.filter(e => !hiddenInOverview.includes(e.calendarId))
         : events.filter(e => e.calendarId === selectedCalendarId);
 
     const monthEvents = relevantEvents.filter(event => {
@@ -267,7 +674,7 @@ function CalendarPage() {
         if (a.date > b.date) return 1;
         return a.startTime.localeCompare(b.startTime);
     });
-  }, [eventsByDay, selectedDate, currentDate, events, selectedCalendarId]);
+  }, [eventsByDay, selectedDate, currentDate, events, selectedCalendarId, hiddenInOverview]);
   
   const handlePrevMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
   const handleNextMonth = () => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
@@ -291,10 +698,10 @@ function CalendarPage() {
   };
   
   const handleSaveEvent = (eventData: Partial<TEvent>, instruction: RepetitionType | EditScope) => {
-    const isRecurringCreation = ['daily', 'weekly', 'monthly', 'yearly'].includes(instruction);
+    const isRecurringCreation = !eventData.id && ['daily', 'weekly', 'monthly', 'yearly'].includes(instruction);
     
     if (isRecurringCreation) {
-      if (selectedCalendarId === 'overview' || !eventData.date) return;
+      if (!eventData.calendarId || !eventData.date) return;
       const seriesId = Date.now().toString();
       const originalDate = dateFromYYYYMMDD(eventData.date);
       const eventsToAdd: TEvent[] = [];
@@ -314,9 +721,8 @@ function CalendarPage() {
         else if (repetitionType === 'yearly') newDate.setFullYear(originalDate.getFullYear() + i);
 
         const newEvent: TEvent = {
-            ...(eventData as Omit<TEvent, 'id' | 'calendarId'>),
+            ...(eventData as Omit<TEvent, 'id' | 'seriesId'>),
             id: `${seriesId}-${i}`,
-            calendarId: selectedCalendarId,
             seriesId: seriesId,
             date: toYYYYMMDD(newDate),
         };
@@ -324,14 +730,55 @@ function CalendarPage() {
       }
       setEvents(prev => [...prev, ...eventsToAdd]);
 
-    } else if (eventData.id) { // Editing
-      setEvents(prev => prev.map(e => e.id === eventData.id ? { ...e, ...eventData } as TEvent : e));
+    } else if (eventData.id) { // Editing an existing event
+      const scope = instruction as EditScope;
+      const originalEvent = events.find(e => e.id === eventData.id);
+      if (!originalEvent) return;
+      
+      const isRecurringEdit = !!originalEvent.seriesId;
+
+      if (!isRecurringEdit || scope === 'single') {
+          // Standard single event update
+          setEvents(prev => prev.map(e => e.id === eventData.id ? { ...e, ...eventData } as TEvent : e));
+      } else {
+          // Recurring event update ('future' or 'all')
+          const { seriesId } = originalEvent;
+          const changesToApply = {
+              name: eventData.name,
+              description: eventData.description,
+              startTime: eventData.startTime,
+              endTime: eventData.endTime,
+              color: eventData.color,
+          };
+
+          setEvents(prevEvents => {
+              return prevEvents.map(e => {
+                  if (e.seriesId !== seriesId) {
+                      return e;
+                  }
+                  
+                  const shouldUpdate = 
+                      (scope === 'all') || 
+                      (scope === 'future' && e.date >= originalEvent.date);
+
+                  if (shouldUpdate) {
+                      const updatedEvent = { ...e, ...changesToApply };
+                      
+                      if (e.id === eventData.id) {
+                          updatedEvent.date = eventData.date || e.date;
+                      }
+                      
+                      return updatedEvent;
+                  }
+                  return e;
+              });
+          });
+      }
     } else { // Adding single event
-      if (selectedCalendarId === 'overview') return;
+      if (!eventData.calendarId) return;
       const newEvent: TEvent = {
-          ...(eventData as Omit<TEvent, 'id' | 'calendarId'>),
+          ...(eventData as Omit<TEvent, 'id'>),
           id: Date.now().toString(),
-          calendarId: selectedCalendarId,
       }
       setEvents(prev => [...prev, newEvent]);
     }
@@ -369,6 +816,7 @@ function CalendarPage() {
     if (!name || !color) return;
     const newCal: TCalendar = { id: Date.now().toString(), name, color };
     setCalendars([...calendars, newCal]);
+    setCalendarOrder(prev => [...prev, newCal.id]);
     setIsAddCalendarModalOpen(false);
   };
 
@@ -381,13 +829,59 @@ function CalendarPage() {
     setEvents(prev => prev.filter(e => e.calendarId !== id));
     setTasks(prev => prev.filter(t => t.calendarId !== id && !eventsToDelete.includes(t.eventId || '')));
     setCalendars(prev => prev.filter(c => c.id !== id));
+    setCalendarOrder(prev => prev.filter(calId => calId !== id));
+    setHiddenInOverview(prev => prev.filter(calId => calId !== id));
     if (selectedCalendarId === id) {
         setSelectedCalendarId('overview');
     }
   };
 
   const selectedCalendar = calendars.find(c => c.id === selectedCalendarId);
-  const calendarOptions = calendars.map(cal => ({ value: cal.id, label: cal.name }));
+  
+  const calendarOptions = useMemo(() => {
+    const options: any[] = [{ value: 'overview', label: 'Overview', className: 'text-lg font-bold py-1' }];
+    
+    const userCalendars = calendars.filter(c => c.id !== 'overview');
+    const sortedCalendars = calendarOrder
+        .map(id => userCalendars.find(c => c.id === id))
+        .filter((c): c is TCalendar => !!c);
+    
+    const categorized = new Map<string, TCalendar[]>();
+    const uncategorized: TCalendar[] = [];
+
+    sortedCalendars.forEach(cal => {
+        if (cal.categoryId && calendarCategories.find(cat => cat.id === cal.categoryId)) {
+            if (!categorized.has(cal.categoryId)) {
+                categorized.set(cal.categoryId, []);
+            }
+            categorized.get(cal.categoryId)!.push(cal);
+        } else {
+            uncategorized.push(cal);
+        }
+    });
+    
+    // Uncategorized calendars now go directly at the top
+    uncategorized.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+    
+    // Add separator only if there are both uncategorized and categorized calendars
+    if (uncategorized.length > 0 && categorized.size > 0) {
+        options.push({ isHeader: true, label: ' ' }); 
+    }
+
+    calendarCategoryOrder.forEach(catId => {
+        const cat = calendarCategories.find(c => c.id === catId);
+        if (cat) {
+            const cals = categorized.get(cat.id);
+            if (cals && cals.length > 0) {
+                options.push({ isHeader: true, label: cat.name });
+                cals.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+            }
+        }
+    });
+
+    return options;
+  }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
+
   const formatTime = (time: string) => new Date(`1970-01-01T${time}`).toLocaleTimeString(lang, { hour: 'numeric', minute: '2-digit' });
 
   return (
@@ -395,66 +889,60 @@ function CalendarPage() {
       <Header titleKey="header.calendar" />
 
       <div className="px-4 pt-4 space-y-6">
-          {/* --- Calendar Selection Bar --- */}
-          <div className="flex items-center gap-2">
-              <CustomSelect options={calendarOptions} value={selectedCalendarId} onChange={setSelectedCalendarId} className="flex-grow" />
-              {selectedCalendarId !== 'overview' && selectedCalendar && (
-                  <button onClick={() => setIsManageModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-gear"></i></button>
-              )}
-               <button onClick={() => setIsAddCalendarModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button>
-          </div>
-
-          {/* --- Calendar View --- */}
+          {/* --- Calendar Box --- */}
           <div className="bg-slate-900 rounded-2xl p-4 shadow-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
-              <div className="flex justify-between items-center mb-4">
-                  <button onClick={handlePrevMonth} className="btn btn-icon bg-transparent hover:bg-slate-800"><i className="fa-solid fa-chevron-left"></i></button>
-                  <h2 className="text-lg font-bold text-slate-100" style={{color: 'var(--text-primary)'}}>{currentDate.toLocaleString(lang, { month: 'long', year: 'numeric' })}</h2>
-                  <button onClick={handleNextMonth} className="btn btn-icon bg-transparent hover:bg-slate-800"><i className="fa-solid fa-chevron-right"></i></button>
+              {/* --- Calendar Selection Bar --- */}
+              <div className="flex items-center gap-2 mb-4">
+                  <CustomSelect options={calendarOptions} value={selectedCalendarId} onChange={setSelectedCalendarId} className="flex-grow" />
+                  <button onClick={() => selectedCalendarId === 'overview' ? setIsManageOverviewOpen(true) : setIsManageModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-gear"></i></button>
+                  <button onClick={() => setIsAddCalendarModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button>
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400 mb-2" style={{color: 'var(--text-secondary)'}}>
-                  {['S','M','T','W','T','F','S'].map(d => <div key={d}>{d}</div>)}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                  {calendarDays.map(date => {
-                      const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-                      const isToday = new Date().toDateString() === date.toDateString();
-                      const isSelected = selectedDate?.toDateString() === date.toDateString();
-                      const dateKey = toYYYYMMDD(date);
-                      const dayEvents = eventsByDay.get(dateKey) || [];
 
-                      return (
-                          <div key={date.toString()} className={`aspect-square rounded-lg p-1 flex flex-col items-center justify-start cursor-pointer transition-all duration-150 ${isSelected ? 'scale-105' : ''}`} style={{backgroundColor: isSelected ? 'var(--accent-primary)' : 'transparent', opacity: isSelected ? 0.5 : 1}} onClick={() => handleDateClick(date)}>
-                              <span className={`font-bold text-sm mb-1 ${isToday ? 'bg-fuchsia-500 text-slate-50 rounded-full w-6 h-6 flex items-center justify-center' : ''} ${isCurrentMonth ? 'text-slate-200' : 'text-slate-600'}`} style={{
-                                backgroundColor: isToday ? 'var(--accent-primary)' : 'transparent',
-                                color: isToday ? 'var(--accent-text)' : isCurrentMonth ? 'var(--text-primary)' : 'var(--text-tertiary)'
-                              }}>
-                                  {date.getDate()}
-                              </span>
-                              <div className="w-full space-y-0.5">
-                                  {selectedCalendarId === 'overview' 
-                                    ? Array.from(new Set(dayEvents.map(e => e.calendarId)))
-                                        .slice(0, 3)
-                                        .map(calId => {
-                                            const cal = calendars.find(c => c.id === calId);
-                                            return cal ? <div key={cal.id} className="h-1 rounded-full" style={{ backgroundColor: cal.color }}></div> : null;
-                                        })
-                                    : dayEvents.slice(0, 3).map(event => (
-                                        <div key={event.id} className="h-1 rounded-full" style={{ backgroundColor: event.color }}></div>
-                                    ))}
+              {/* --- Calendar View --- */}
+              <div>
+                  <div className="flex justify-between items-center mb-4">
+                      <button onClick={handlePrevMonth} className="btn btn-icon bg-transparent hover:bg-slate-800"><i className="fa-solid fa-chevron-left"></i></button>
+                      <h2 className="text-lg font-bold text-slate-100" style={{color: 'var(--text-primary)'}}>{currentDate.toLocaleString(lang, { month: 'long', year: 'numeric' })}</h2>
+                      <button onClick={handleNextMonth} className="btn btn-icon bg-transparent hover:bg-slate-800"><i className="fa-solid fa-chevron-right"></i></button>
+                  </div>
+                  <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-slate-400 mb-2" style={{color: 'var(--text-secondary)'}}>
+                      {['S','M','T','W','T','F','S'].map(d => <div key={d}>{d}</div>)}
+                  </div>
+                  <div className="grid grid-cols-7 gap-1">
+                      {calendarDays.map(date => {
+                          const isCurrentMonth = date.getMonth() === currentDate.getMonth();
+                          const isToday = new Date().toDateString() === date.toDateString();
+                          const isSelected = selectedDate?.toDateString() === date.toDateString();
+                          const dateKey = toYYYYMMDD(date);
+                          const dayEvents = eventsByDay.get(dateKey) || [];
+
+                          return (
+                              <div key={date.toString()} className={`aspect-square rounded-lg p-1 flex flex-col items-center justify-start cursor-pointer transition-all duration-150 ${isSelected ? 'scale-105' : ''}`} style={{backgroundColor: isSelected ? 'var(--accent-primary)' : 'transparent', opacity: isSelected ? 0.5 : 1}} onClick={() => handleDateClick(date)}>
+                                  <span className={`font-bold text-sm mb-1 ${isToday ? 'bg-fuchsia-500 text-slate-50 rounded-full w-6 h-6 flex items-center justify-center' : ''} ${isCurrentMonth ? 'text-slate-200' : 'text-slate-600'}`} style={{
+                                    backgroundColor: isToday ? 'var(--accent-primary)' : 'transparent',
+                                    color: isToday ? 'var(--accent-text)' : isCurrentMonth ? 'var(--text-primary)' : 'var(--text-tertiary)'
+                                  }}>
+                                      {date.getDate()}
+                                  </span>
+                                  <div className="w-full space-y-0.5">
+                                      {selectedCalendarId === 'overview' 
+                                        ? Array.from(new Set(dayEvents.map(e => e.calendarId)))
+                                            .slice(0, 3)
+                                            .map(calId => {
+                                                const cal = calendars.find(c => c.id === calId);
+                                                return cal ? <div key={cal.id} className="h-1 rounded-full" style={{ backgroundColor: cal.color }}></div> : null;
+                                            })
+                                        : dayEvents.slice(0, 3).map(event => (
+                                            <div key={event.id} className="h-1 rounded-full" style={{ backgroundColor: event.color }}></div>
+                                        ))}
+                                  </div>
                               </div>
-                          </div>
-                      );
-                  })}
+                          );
+                      })}
+                  </div>
               </div>
           </div>
           
-          {/* --- Add Event Button --- */}
-          {selectedCalendarId !== 'overview' && (
-            <div>
-                <button onClick={openAddEventModal} className="w-full btn btn-secondary">{t('calendar.add')}</button>
-            </div>
-          )}
-
           {/* --- Event Details View --- */}
           <div>
               <h2 className="text-xl font-bold text-slate-100 mb-3" style={{color: 'var(--text-primary)'}}>
@@ -491,7 +979,7 @@ function CalendarPage() {
                               </div>
                           </button>
                       );
-                  }) : <p className="text-center py-6 rounded-lg" style={{color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-secondary)'}}>{selectedDate ? 'No events for this day.' : 'No events for this month.'}</p>}
+                  }) : <div className="text-center py-6 rounded-lg flex flex-col items-center justify-center h-40" style={{color: 'var(--text-tertiary)', backgroundColor: 'var(--bg-secondary)'}}><i className="fa-solid fa-calendar-check text-5xl"></i></div>}
               </div>
           </div>
       </div>
@@ -502,11 +990,13 @@ function CalendarPage() {
         onSave={handleSaveEvent}
         onDelete={handleDeleteEvent}
         initialData={editingEvent || { date: toYYYYMMDD(selectedDate || new Date()) }}
+        activeCalendarId={selectedCalendarId}
       />
       <AddCalendarModal isOpen={isAddCalendarModalOpen} onClose={() => setIsAddCalendarModalOpen(false)} onAdd={handleAddCalendar} />
       {selectedCalendar && selectedCalendar.id !== 'overview' && (
           <ManageCalendarModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} calendar={selectedCalendar} onUpdate={handleUpdateCalendar} onDelete={handleDeleteCalendar} />
       )}
+      <ManageModal isOpen={isManageOverviewOpen} onClose={() => setIsManageOverviewOpen(false)} />
     </div>
   );
 }
@@ -529,7 +1019,7 @@ const AddCalendarModal: React.FC<{isOpen: boolean, onClose: () => void, onAdd: (
     }
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add Calendar">
+        <Modal isOpen={isOpen} onClose={onClose} title="New Calendar">
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label htmlFor="calName" className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Calendar Name</label>
@@ -539,12 +1029,11 @@ const AddCalendarModal: React.FC<{isOpen: boolean, onClose: () => void, onAdd: (
                     <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Color</label>
                     <div className="grid grid-cols-7 gap-2">
                         {COLORS.map(c => (
-                            // FIX: Replace `ringOffsetColor` with `--tw-ring-offset-color` and cast style object to `React.CSSProperties`.
                             <button type="button" key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
                         ))}
                     </div>
                 </div>
-                <button type="submit" className="w-full btn btn-primary">Add Calendar</button>
+                <button type="submit" className="w-full btn btn-primary"><i className="fa-solid fa-plus text-lg"></i></button>
             </form>
         </Modal>
     )
@@ -583,15 +1072,14 @@ const ManageCalendarModal: React.FC<ManageCalendarModalProps> = ({ isOpen, onClo
     };
     
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Confirm Deletion" : t('calendar.manage')}>
+        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Are you sure?" : t('calendar.manage')}>
             {showConfirmDelete ? (
                 <div className="space-y-4 text-center">
                     <p style={{color: 'var(--text-secondary)'}}>
-                        Are you sure? This will permanently delete the calendar and all its events. This action cannot be undone.
+                        This will permanently delete the calendar and all its events. This action cannot be undone.
                     </p>
-                    <div className="flex gap-2 pt-2">
-                        <button type="button" onClick={() => setShowConfirmDelete(false)} className="flex-1 btn btn-secondary">{t('common.cancel')}</button>
-                        <button type="button" onClick={handleDeleteConfirm} className="flex-1 btn btn-danger">Confirm Delete</button>
+                    <div className="pt-2">
+                        <button type="button" onClick={handleDeleteConfirm} className="w-full btn btn-danger">Yes</button>
                     </div>
                 </div>
             ) : (
@@ -604,7 +1092,6 @@ const ManageCalendarModal: React.FC<ManageCalendarModalProps> = ({ isOpen, onClo
                         <label className={LABEL_STYLE} style={{color: 'var(--text-secondary)'}}>Color</label>
                         <div className="grid grid-cols-7 gap-2">
                             {COLORS.map(c => (
-                                // FIX: Replace `ringOffsetColor` with `--tw-ring-offset-color` and cast style object to `React.CSSProperties`.
                                 <button type="button" key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${color === c ? 'ring-2 ring-offset-2 ring-white' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
                             ))}
                         </div>

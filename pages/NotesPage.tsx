@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useAppContext, useTranslation } from '../context/AppContext';
-import { TNote, TTag, TCalendar } from '../types';
+import { TNote, TTag, TCalendar, TCalendarCategory } from '../types';
 import Header from '../components/Header';
 import CustomSelect from '../components/CustomSelect';
 import { COLORS } from '../constants';
@@ -99,7 +99,7 @@ interface NoteEditorProps {
 }
 
 const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, onSave, onCancel, onDelete }) => {
-  const { calendars, tags, setTags } = useAppContext();
+  const { calendars, tags, setTags, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
   const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -201,7 +201,48 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, o
       }
   };
 
-  const folderOptions = calendars.filter(c => c.id !== 'overview').map(c => ({ value: c.id, label: c.name }));
+  const folderOptions = useMemo(() => {
+    const options: any[] = [];
+    const userCalendars = calendars.filter(c => c.id !== 'overview');
+    
+    const sortedCalendars = calendarOrder
+        .map(id => userCalendars.find(c => c.id === id))
+        .filter((c): c is TCalendar => !!c);
+    
+    const categorized = new Map<string, TCalendar[]>();
+    const uncategorized: TCalendar[] = [];
+
+    sortedCalendars.forEach(cal => {
+        if (cal.categoryId && calendarCategories.find(cat => cat.id === cal.categoryId)) {
+            if (!categorized.has(cal.categoryId)) {
+                categorized.set(cal.categoryId, []);
+            }
+            categorized.get(cal.categoryId)!.push(cal);
+        } else {
+            uncategorized.push(cal);
+        }
+    });
+    
+    uncategorized.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+    
+    if (uncategorized.length > 0 && categorized.size > 0) {
+        options.push({ isHeader: true, label: ' ' }); 
+    }
+
+    calendarCategoryOrder.forEach(catId => {
+        const cat = calendarCategories.find(c => c.id === catId);
+        if (cat) {
+            const cals = categorized.get(cat.id);
+            if (cals && cals.length > 0) {
+                options.push({ isHeader: true, label: cat.name });
+                cals.forEach(cal => options.push({ value: cal.id, label: cal.name }));
+            }
+        }
+    });
+
+    return options;
+  }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
+
   const availableTagsToAdd = tags.filter(tag => !noteTagIds.includes(tag.id));
 
   return (
@@ -317,7 +358,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, o
 
 // --- Main Notes Page Component ---
 function NotesPage() {
-  const { notes, setNotes, calendars, tags, setTags } = useAppContext();
+  const { notes, setNotes, calendars, tags, setTags, activeAction, setActiveAction } = useAppContext();
   const { t } = useTranslation();
   const [view, setView] = useState<'list' | 'editor'>('list');
   const [selectedNote, setSelectedNote] = useState<TNote | null>(null);
@@ -339,6 +380,20 @@ function NotesPage() {
       setTags(tagsInUse);
     }
   }, [notes, tags, setTags, view]);
+
+  useEffect(() => {
+    if (activeAction === 'notes') {
+      if (selectedCalendarId === 'overview') {
+        const firstUserCalendar = calendars.find(c => c.id !== 'overview');
+        if (firstUserCalendar) {
+            setSelectedCalendarId(firstUserCalendar.id);
+        }
+      }
+      setSelectedNote(null);
+      setView('editor');
+      setActiveAction(null);
+    }
+  }, [activeAction, setActiveAction, selectedCalendarId, calendars]);
 
   const notesForCalendar = useMemo(() => {
     const sorted = [...notes].sort((a,b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());

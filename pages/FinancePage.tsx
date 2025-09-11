@@ -323,7 +323,7 @@ const ManageWalletModal: React.FC<{
 
 
 function FinancePage() {
-    const { wallets, setWallets, transactions, setTransactions, financeCategories, setFinanceCategories } = useAppContext();
+    const { wallets, setWallets, transactions, setTransactions, financeCategories, setFinanceCategories, activeAction, setActiveAction } = useAppContext();
     const [selectedWalletId, setSelectedWalletId] = useState('overview');
     const [filterType, setFilterType] = useState<FilterType>('month');
     const [dateRange, setDateRange] = useState({ from: toYYYYMMDD(new Date()), to: toYYYYMMDD(new Date()) });
@@ -341,6 +341,26 @@ function FinancePage() {
             setFinanceCategories(categoriesInUse);
         }
     }, [transactions, financeCategories, setFinanceCategories]);
+
+    useEffect(() => {
+        if (activeAction === 'finance') {
+          let targetWalletId = selectedWalletId;
+          if (selectedWalletId === 'overview') {
+            const firstWallet = wallets.find(w => w.id !== 'overview');
+            if (firstWallet) {
+              targetWalletId = firstWallet.id;
+              setSelectedWalletId(firstWallet.id);
+            } else {
+              // Can't add transaction without a wallet
+              setActiveAction(null);
+              return;
+            }
+          }
+          setEditingTransaction(null);
+          setIsFormOpen(true);
+          setActiveAction(null);
+        }
+      }, [activeAction, setActiveAction, selectedWalletId, wallets]);
 
     const filteredTransactions = useMemo(() => {
         const now = new Date();

@@ -411,7 +411,7 @@ const ManageCategoriesModal: React.FC<ManageCategoriesModalProps> = ({ isOpen, o
 
 // --- Main Page Component ---
 function HabitPage() {
-    const { habits, setHabits, habitLogs, setHabitLogs, habitCategories } = useAppContext();
+    const { habits, setHabits, habitLogs, setHabitLogs, habitCategories, activeAction, setActiveAction } = useAppContext();
     const { lang } = useTranslation();
 
     const [view, setView] = useState<'list' | 'archive'>('list');
@@ -423,6 +423,18 @@ function HabitPage() {
 
     const weekStart = getStartOfWeek(currentDate);
     const weekDays = getWeekDays(weekStart);
+    
+    const openAddHabitModal = () => {
+        setEditingHabit(null);
+        setIsFormModalOpen(true);
+    };
+
+    useEffect(() => {
+        if (activeAction === 'habit') {
+          openAddHabitModal();
+          setActiveAction(null);
+        }
+      }, [activeAction, setActiveAction]);
 
     const handlePrevWeek = () => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() - 7)));
     const handleNextWeek = () => setCurrentDate(new Date(currentDate.setDate(currentDate.getDate() + 7)));
@@ -481,11 +493,6 @@ function HabitPage() {
         setIsFormModalOpen(false);
         setView('list');
         setSelectedHabit(null);
-    };
-    
-    const openAddHabitModal = () => {
-        setEditingHabit(null);
-        setIsFormModalOpen(true);
     };
     
     const openEditHabitModal = (habit: THabit) => {
