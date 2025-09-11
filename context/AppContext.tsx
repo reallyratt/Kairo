@@ -1,11 +1,12 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { TCalendar, TEvent, TTask, THabitCategory, THabit, THabitLog, TFinanceCategory, TTransaction, TNote, TTag, TWallet } from '../types';
+import { TCalendar, TEvent, TTask, THabitCategory, THabit, THabitLog, TFinanceCategory, TTransaction, TNote, TTag, TWallet, TCalendarCategory } from '../types';
 import { DEFAULT_CALENDARS, DEFAULT_FINANCE_CATEGORIES, DEFAULT_HABIT_CATEGORIES, DEFAULT_WALLETS } from '../constants';
 
 // --- TYPES ---
 export type Language = 'en' | 'id' | 'tlh';
 export type Theme = 'dark' | 'light' | 'cute';
+export type ActivePage = 'notes' | 'todo' | 'calendar' | 'habit' | 'finance';
 
 interface AppContextType {
   calendars: TCalendar[];
@@ -40,6 +41,16 @@ interface AppContextType {
   setLanguage: React.Dispatch<React.SetStateAction<Language>>;
   theme: Theme;
   setTheme: React.Dispatch<React.SetStateAction<Theme>>;
+  activeAction: ActivePage | null;
+  setActiveAction: React.Dispatch<React.SetStateAction<ActivePage | null>>;
+  calendarCategories: TCalendarCategory[];
+  setCalendarCategories: React.Dispatch<React.SetStateAction<TCalendarCategory[]>>;
+  calendarOrder: string[];
+  setCalendarOrder: React.Dispatch<React.SetStateAction<string[]>>;
+  calendarCategoryOrder: string[];
+  setCalendarCategoryOrder: React.Dispatch<React.SetStateAction<string[]>>;
+  hiddenInOverview: string[];
+  setHiddenInOverview: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -47,8 +58,8 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 // --- TRANSLATION LOGIC ---
 const translations: Record<Language, Record<string, any>> = {
   en: {
-    nav: { notes: "Notes", todo: "To Do", calendar: "Calendar", habit: "Habit", finance: "Finance" },
-    header: { notes: "Notes", todo: "To-Do List", calendar: "Calendar", habit: "Habit Tracker", finance: "Finances", settings: "Settings" },
+    nav: { notes: "Notes", todo: "Synced Tasks", calendar: "Calendar", habit: "Habit", finance: "Finance" },
+    header: { notes: "Notes", todo: "Synced Tasks", calendar: "Multi Calendar", habit: "Habit Tracker", finance: "Finances", settings: "Settings" },
     settings: { language: "Language", theme: "Theme", dark: "Dark", light: "Light", cute: "Cute", back: "Back to the App" },
     notes: { add: "Add New Note", filterTags: "Filter by tags...", titlePlaceholder: "Note Title...", save: "Save Note", delete: "Delete" },
     calendar: { add: "Add Event", manage: "Manage Calendar" },
@@ -56,8 +67,8 @@ const translations: Record<Language, Record<string, any>> = {
     common: { save: "Save", delete: "Delete", cancel: "Cancel", create: "Create" }
   },
   id: {
-    nav: { notes: "Catatan", todo: "Tugas", calendar: "Kalender", habit: "Kebiasaan", finance: "Keuangan" },
-    header: { notes: "Catatan", todo: "Daftar Tugas", calendar: "Kalender", habit: "Pelacak Kebiasaan", finance: "Keuangan", settings: "Pengaturan" },
+    nav: { notes: "Catatan", todo: "Tugas Sinkron", calendar: "Kalender", habit: "Kebiasaan", finance: "Keuangan" },
+    header: { notes: "Catatan", todo: "Tugas Sinkron", calendar: "Multi Kalender", habit: "Pelacak Kebiasaan", finance: "Keuangan", settings: "Pengaturan" },
     settings: { language: "Bahasa", theme: "Tema", dark: "Gelap", light: "Terang", cute: "Imut", back: "Kembali ke Aplikasi" },
     notes: { add: "Tambah Catatan Baru", filterTags: "Saring menurut tag...", titlePlaceholder: "Judul Catatan...", save: "Simpan Catatan", delete: "Hapus" },
     calendar: { add: "Tambah Acara", manage: "Kelola Kalender" },
@@ -65,8 +76,8 @@ const translations: Record<Language, Record<string, any>> = {
     common: { save: "Simpan", delete: "Hapus", cancel: "Batal", create: "Buat" }
   },
   tlh: {
-    nav: { notes: "ghItlh'e'", todo: "Qo'mey", calendar: "DIvI'", habit: "ghoj", finance: "chovnatlh" },
-    header: { notes: "ghItlh'e'", todo: "Qo'mey DIvI'", calendar: "DIvI'", habit: "ghoj luj", finance: "chovnatlh", settings: "ghun'e'" },
+    nav: { notes: "ghItlh'e'", todo: "Qo'mey naDev", calendar: "DIvI'", habit: "ghoj", finance: "chovnatlh" },
+    header: { notes: "ghItlh'e'", todo: "Qo'mey naDev", calendar: "Multi DIvI'", habit: "ghoj luj", finance: "chovnatlh", settings: "ghun'e'" },
     settings: { language: "Hol", theme: "Tema'", dark: "qIj", light: "leS", cute: "yIn", back: "AppDaq jImev" },
     notes: { add: "ghItlh'e' chu' yaj", filterTags: "matlhvaD yuch...", titlePlaceholder: "ghItlh'e' mI'", save: "baS ghItlh'e'", delete: "Qaw'" },
     calendar: { add: "wanI' Doch", manage: "DIvI' vIH" },
@@ -116,6 +127,69 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const [language, setLanguage] = useLocalStorage<Language>('kairo-language', 'en');
   const [theme, setTheme] = useLocalStorage<Theme>('kairo-theme', 'dark');
+  
+  const [activeAction, setActiveAction] = useState<ActivePage | null>(null);
+
+  const [calendarCategories, setCalendarCategories] = useLocalStorage<TCalendarCategory[]>('kairo-calendarCategories', []);
+  const [calendarOrder, setCalendarOrder] = useLocalStorage<string[]>('kairo-calendarOrder', []);
+  const [calendarCategoryOrder, setCalendarCategoryOrder] = useLocalStorage<string[]>('kairo-calendarCategoryOrder', []);
+  const [hiddenInOverview, setHiddenInOverview] = useLocalStorage<string[]>('kairo-hiddenInOverview', []);
+
+
+  useEffect(() => {
+    // This effect migrates tasks to include createdAt and updatedAt fields for sorting.
+    if (tasks.length > 0 && (!tasks[0].createdAt || !tasks[0].updatedAt)) {
+        const now = new Date().toISOString();
+        const migratedTasks = tasks.map(task => {
+            // If either timestamp is missing, add them.
+            if (!task.createdAt || !task.updatedAt) {
+                return {
+                    ...task,
+                    createdAt: task.createdAt || now,
+                    updatedAt: task.updatedAt || now,
+                };
+            }
+            return task;
+        });
+        setTasks(migratedTasks);
+    }
+  }, [tasks, setTasks]);
+  
+  useEffect(() => {
+    // This effect ensures calendarOrder is initialized and synchronized with the actual calendars.
+    const userCalendarIds = calendars.filter(c => c.id !== 'overview').map(c => c.id);
+    const orderSet = new Set(calendarOrder);
+    const calendarIdSet = new Set(userCalendarIds);
+
+    if (orderSet.size !== calendarIdSet.size || !userCalendarIds.every(id => orderSet.has(id))) {
+      // Re-initialize order: keep existing order for known calendars, append new ones.
+      const newOrder = calendarOrder.filter(id => calendarIdSet.has(id));
+      userCalendarIds.forEach(id => {
+        if (!newOrder.includes(id)) {
+          newOrder.push(id);
+        }
+      });
+      setCalendarOrder(newOrder);
+    }
+  }, [calendars, calendarOrder, setCalendarOrder]);
+  
+  useEffect(() => {
+    // This effect ensures calendarCategoryOrder is initialized and synchronized with the actual categories.
+    const categoryIds = calendarCategories.map(c => c.id);
+    const orderSet = new Set(calendarCategoryOrder);
+    const categoryIdSet = new Set(categoryIds);
+
+    if (orderSet.size !== categoryIdSet.size || !categoryIds.every(id => orderSet.has(id))) {
+      const newOrder = calendarCategoryOrder.filter(id => categoryIdSet.has(id));
+      categoryIds.forEach(id => {
+        if (!newOrder.includes(id)) {
+          newOrder.push(id);
+        }
+      });
+      setCalendarCategoryOrder(newOrder);
+    }
+  }, [calendarCategories, calendarCategoryOrder, setCalendarCategoryOrder]);
+
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -138,7 +212,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     isDataOpen, setIsDataOpen,
     isSettingsOpen, setIsSettingsOpen,
     language, setLanguage,
-    theme, setTheme
+    theme, setTheme,
+    activeAction, setActiveAction,
+    calendarCategories, setCalendarCategories,
+    calendarOrder, setCalendarOrder,
+    calendarCategoryOrder, setCalendarCategoryOrder,
+    hiddenInOverview, setHiddenInOverview,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
