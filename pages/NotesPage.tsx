@@ -284,7 +284,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeCalendarId, o
                         return tag ? <button key={tag.id} onClick={() => setNoteTagIds(noteTagIds.filter(id => id !== tagId))} className="bg-fuchsia-500/20 text-fuchsia-300 text-xs font-semibold px-2 py-0.5 rounded-full hover:bg-fuchsia-500/40" style={{backgroundColor: 'var(--accent-primary)', color: 'var(--accent-text)', opacity: 0.8}}>&times; {tag.name}</button> : null;
                       })}
                     </div>
-                    <button onClick={() => setIsManageTagsModalOpen(true)} className="btn btn-secondary btn-icon text-xs flex-shrink-0"><i className="fa-solid fa-plus"></i></button>
+                    <button onClick={() => setIsManageTagsModalOpen(true)} className="btn btn-secondary btn-icon text-xs flex-shrink-0"><i className="fa-solid fa-gear"></i></button>
                 </div>
             </div>
             <div className="flex gap-2 pt-2">
