@@ -17,6 +17,7 @@ export interface TNote {
   tagIds: string[];
   createdAt: string; // ISO String
   updatedAt: string; // ISO String
+  noteTheme?: string;
 }
 
 export interface TCalendarCategory {

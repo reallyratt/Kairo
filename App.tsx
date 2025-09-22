@@ -1,10 +1,6 @@
-
-
-
-
 import React, { useRef, useState, useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { AppProvider, useAppContext, ActivePage } from './context/AppContext';
+import { AppProvider, useAppContext, ActivePage, useTranslation } from './context/AppContext';
 import BottomNav from './components/BottomNav';
 import CalendarPage from './pages/CalendarPage';
 import TodoPage from './pages/TodoPage';
@@ -14,15 +10,16 @@ import DataOverlay from './components/DataOverlay';
 import SettingsOverlay from './components/SettingsOverlay';
 
 // --- Floating Action Button Component ---
-const speedDialActions: { action: ActivePage, icon: string, label: string }[] = [
-    { action: 'notes', icon: 'fa-note-sticky', label: 'Note' },
-    { action: 'todo', icon: 'fa-list-check', label: 'Task' },
-    { action: 'calendar', icon: 'fa-calendar-days', label: 'Event' },
+const speedDialActions: { action: ActivePage, icon: string, labelKey: string }[] = [
+    { action: 'notes', icon: 'fa-note-sticky', labelKey: 'fab.addNote' },
+    { action: 'todo', icon: 'fa-list-check', labelKey: 'fab.addTask' },
+    { action: 'calendar', icon: 'fa-calendar-days', labelKey: 'fab.addEvent' },
 ];
 
 const FloatingActionButton: React.FC<{ isVisible: boolean; onActionClick: (action: ActivePage) => void }> = ({ isVisible, onActionClick }) => {
     const [isOpen, setIsOpen] = useState(false);
     const fabRef = useRef<HTMLDivElement>(null);
+    const { t } = useTranslation();
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -64,7 +61,7 @@ const FloatingActionButton: React.FC<{ isVisible: boolean; onActionClick: (actio
                          }}
                     >
                          <span className="mr-4 px-3 py-1 rounded-md text-sm font-semibold shadow-lg whitespace-nowrap transition-colors duration-200 group-hover:text-fuchsia-300" style={{backgroundColor: 'var(--bg-tertiary)'}}>
-                            Add {item.label}
+                            {t(item.labelKey)}
                         </span>
                         <button
                             onClick={() => handleActionClick(item.action)}
@@ -72,7 +69,7 @@ const FloatingActionButton: React.FC<{ isVisible: boolean; onActionClick: (actio
                             style={{ 
                                 backgroundColor: 'var(--bg-tertiary)',
                             }}
-                            aria-label={`Add ${item.label}`}
+                            aria-label={t(item.labelKey)}
                         >
                             <i className={`fa-solid ${item.icon} text-lg`}></i>
                         </button>

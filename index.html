@@ -87,6 +87,27 @@
           --font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', cursive;
       }
 
+      body[data-theme='monochrome'] {
+          --bg-primary: #111111;
+          --bg-secondary: #1f1f1f;
+          --bg-tertiary: #2d2d2d;
+          --bg-quaternary: #3c3c3c;
+          --text-primary: #e5e5e5;
+          --text-secondary: #a3a3a3;
+          --text-tertiary: #737373;
+          --text-inverted: #111111;
+          --border-color: #3c3c3c;
+          --accent-primary: #e5e5e5;
+          --accent-secondary: #fafafa;
+          --accent-text: #111111;
+          --danger-primary: #fca5a5;
+          --danger-secondary-bg: rgba(239, 68, 68, 0.1);
+          --danger-tertiary-bg: rgba(239, 68, 68, 0.2);
+          --success-primary: #86efac;
+          --shadow-color: 0 0 0 / 0.1;
+          --font-family: 'system-ui', 'sans-serif';
+      }
+
       /* Apply theme variables */
       body {
         background-color: var(--bg-primary);
@@ -242,6 +263,53 @@
         border-radius: 0.375rem; /* rounded-md */
         border: 2px dashed var(--accent-primary);
         margin: 4px 0;
+      }
+
+      /* --- NOTE THEMES --- */
+      .note-theme-rose { --note-bg: #fff1f2; --note-text: #881337; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cg fill='%23ef4444' fill-opacity='0.1'%3E%3Cpath fill-rule='evenodd' d='M0 0h4v4H0V0zm4 4h4v4H4V4z'/%3E%3C/g%3E%3C/svg%3E"); }
+      .note-theme-violet { --note-bg: #f5f3ff; --note-text: #4c1d95; --note-pattern: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%238b5cf6' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E"); }
+      .note-theme-amber { --note-bg: #fffbeb; --note-text: #78350f; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23f59e0b' fill-opacity='0.1' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'/%3E%3C/svg%3E"); }
+      .note-theme-forest { --note-bg: #f0fdf4; --note-text: #14532d; --note-pattern: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 0v16M0 8h16' stroke='%2322c55e' stroke-width='1' stroke-opacity='0.1'/%3E%3C/svg%3E"); }
+      .note-theme-ocean { --note-bg: #ecfeff; --note-text: #0e7490; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%2306b6d4' fill-opacity='0.1' d='M0 0h20L0 20z'/%3E%3C/svg%3E"); }
+      .note-theme-stone { --note-bg: #fafafa; --note-text: #1c1917; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='5' viewBox='0 0 5 5'%3E%3Cpath fill='%2378716c' fill-opacity='0.1' d='M0 0h5v1H0zm0 4h5v1H0z'/%3E%3C/svg%3E"); }
+      
+      body[data-theme='dark'] .note-theme-rose, body[data-theme='monochrome'] .note-theme-rose { --note-bg: #581c37; --note-text: #fda4af; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='8' viewBox='0 0 8 8'%3E%3Cg fill='%23f472b6' fill-opacity='0.1'%3E%3Cpath fill-rule='evenodd' d='M0 0h4v4H0V0zm4 4h4v4H4V4z'/%3E%3C/g%3E%3C/svg%3E"); }
+      body[data-theme='dark'] .note-theme-violet, body[data-theme='monochrome'] .note-theme-violet { --note-bg: #3b0764; --note-text: #d8b4fe; --note-pattern: url("data:image/svg+xml,%3Csvg width='6' height='6' viewBox='0 0 6 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23c084fc' fill-opacity='0.1' fill-rule='evenodd'%3E%3Cpath d='M5 0h1L0 6V5zM6 5v1H5z'/%3E%3C/g%3E%3C/svg%3E"); }
+      body[data-theme='dark'] .note-theme-amber, body[data-theme='monochrome'] .note-theme-amber { --note-bg: #451a03; --note-text: #fcd34d; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='4' height='4' viewBox='0 0 4 4'%3E%3Cpath fill='%23fbbf24' fill-opacity='0.1' d='M1 3h1v1H1V3zm2-2h1v1H3V1z'/%3E%3C/svg%3E"); }
+      body[data-theme='dark'] .note-theme-forest, body[data-theme='monochrome'] .note-theme-forest { --note-bg: #062813; --note-text: #bbf7d0; --note-pattern: url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M8 0v16M0 8h16' stroke='%234ade80' stroke-width='1' stroke-opacity='0.1'/%3E%3C/svg%3E"); }
+      body[data-theme='dark'] .note-theme-ocean, body[data-theme='monochrome'] .note-theme-ocean { --note-bg: #082f49; --note-text: #a5f3fc; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%2322d3ee' fill-opacity='0.1' d='M0 0h20L0 20z'/%3E%3C/svg%3E"); }
+      body[data-theme='dark'] .note-theme-stone, body[data-theme='monochrome'] .note-theme-stone { --note-bg: #1c1917; --note-text: #d6d3d1; --note-pattern: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='5' height='5' viewBox='0 0 5 5'%3E%3Cpath fill='%23a8a29e' fill-opacity='0.1' d='M0 0h5v1H0zm0 4h5v1H0z'/%3E%3C/svg%3E"); }
+
+      .note-themed {
+        background-color: var(--note-bg);
+        background-image: var(--note-pattern);
+        color: var(--note-text) !important;
+        transition: background-color 0.3s ease, color 0.3s ease;
+      }
+      .note-themed .form-input, .note-themed .form-select {
+        background-color: rgba(0,0,0,0.1);
+        border-color: rgba(0,0,0,0.1);
+        color: var(--note-text);
+      }
+      .note-themed *::placeholder {
+        color: var(--note-text);
+        opacity: 0.7;
+      }
+      .note-themed :is(h1,h2,h3,h4,h5,h6), .note-themed strong, .note-themed b {
+        color: var(--note-text);
+      }
+      .note-themed .editor-content a {
+        color: var(--note-text);
+        opacity: 0.8;
+        text-decoration-thickness: 2px;
+      }
+      .note-themed :is(.btn-secondary, .btn-danger) {
+        background-color: rgba(0,0,0,0.1);
+        color: var(--note-text);
+      }
+      .note-themed .btn-primary {
+         background-color: var(--note-text);
+         color: var(--note-bg);
       }
     </style>
   <script type="importmap">

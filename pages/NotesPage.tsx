@@ -29,6 +29,36 @@ const useUnsavedChangesWarning = (hasChanges: boolean) => {
 
 // --- Note Editor Sub-components ---
 
+const NoteThemePicker: React.FC<{
+    selectedTheme: string;
+    onSelectTheme: (theme: string) => void;
+}> = ({ selectedTheme, onSelectTheme }) => {
+    const { t } = useTranslation();
+    const themes = ['default', 'rose', 'violet', 'amber', 'forest', 'ocean', 'stone'];
+    
+    return (
+        <div className="flex items-center gap-3">
+            <i className="fa-solid fa-palette w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
+            <div className="flex-grow">
+                <div className="grid grid-cols-7 gap-2">
+                    {themes.map(theme => (
+                        <button
+                            type="button"
+                            key={theme}
+                            onClick={() => onSelectTheme(theme)}
+                            className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${theme !== 'default' ? `note-theme-${theme} note-themed` : 'bg-gray-400'} ${selectedTheme === theme ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`}
+                            style={{ '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}
+                            aria-label={theme === 'default' ? t('notes.default') : theme}
+                        >
+                            {theme === 'default' && <i className="fa-solid fa-ban text-white"></i>}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const EditBar: React.FC<{ 
     onCommand: (cmd: string, val?: string) => void,
     onMediaAction: (action: 'link' | 'image' | 'audio' | 'draw') => void,
@@ -73,14 +103,16 @@ const EditBar: React.FC<{
 };
 
 const LinkModal: React.FC<{ isOpen: boolean, onClose: () => void, onSave: (url: string, text: string) => void, initialText: string }> = ({ isOpen, onClose, onSave, initialText }) => {
+    const { t } = useTranslation();
     const [url, setUrl] = useState('https://');
     const [text, setText] = useState('');
     useEffect(() => { if (isOpen) setText(initialText); }, [isOpen, initialText]);
     const handleSubmit = (e: React.FormEvent) => { e.preventDefault(); onSave(url, text); onClose(); };
-    return <Modal isOpen={isOpen} onClose={onClose} title="Insert Link"><form onSubmit={handleSubmit} className="space-y-4"><div><label className="block text-sm font-medium mb-1" style={{color: 'var(--text-secondary)'}}>URL</label><input type="url" value={url} onChange={e => setUrl(e.target.value)} className="form-input" required autoFocus /></div><div><label className="block text-sm font-medium mb-1" style={{color: 'var(--text-secondary)'}}>Text to display</label><input type="text" value={text} onChange={e => setText(e.target.value)} placeholder="Leave empty to use URL" className="form-input" /></div><button type="submit" className="w-full btn btn-primary">Insert</button></form></Modal>;
+    return <Modal isOpen={isOpen} onClose={onClose} title={t('notes.insertLinkTitle')}><form onSubmit={handleSubmit} className="space-y-4"><div><label className="block text-sm font-medium mb-1" style={{color: 'var(--text-secondary)'}}>{t('notes.insertLinkURL')}</label><input type="url" value={url} onChange={e => setUrl(e.target.value)} className="form-input" required autoFocus /></div><div><label className="block text-sm font-medium mb-1" style={{color: 'var(--text-secondary)'}}>{t('notes.insertLinkText')}</label><input type="text" value={text} onChange={e => setText(e.target.value)} placeholder={t('notes.insertLinkPlaceholder')} className="form-input" /></div><button type="submit" className="w-full btn btn-primary">{t('notes.insertLinkInsert')}</button></form></Modal>;
 };
 
 const DrawingModal: React.FC<{ isOpen: boolean, onClose: () => void, onSave: (dataUrl: string) => void }> = ({ isOpen, onClose, onSave }) => {
+    const { t } = useTranslation();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [penColor, setPenColor] = useState('#FFFFFF');
     const [penSize, setPenSize] = useState(5);
@@ -129,7 +161,7 @@ const DrawingModal: React.FC<{ isOpen: boolean, onClose: () => void, onSave: (da
     }, [draw]);
     const handleSave = () => { if(canvasRef.current) onSave(canvasRef.current.toDataURL('image/png')); onClose(); };
     const clearCanvas = () => { const canvas = canvasRef.current; if(!canvas) return; const ctx = canvas.getContext('2d'); if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); };
-    return <Modal isOpen={isOpen} onClose={onClose} title="Drawing Pad"><div className="space-y-3"><canvas ref={canvasRef} width="300" height="300" onMouseDown={startDrawing} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchEnd={stopDrawing} className="rounded-lg w-full" style={{backgroundColor: 'var(--bg-primary)', touchAction: 'none'}}></canvas><div className="flex items-center gap-2"><label className="text-sm">Color:</label><div className="flex gap-1.5">{['#FFFFFF', '#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#d946ef'].map(c => <button key={c} onClick={() => setPenColor(c)} className={`w-6 h-6 rounded-full ${penColor === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)'} as React.CSSProperties}></button>)}</div></div><div className="flex items-center gap-2"><label className="text-sm">Size:</label><input type="range" min="1" max="20" value={penSize} onChange={e => setPenSize(Number(e.target.value))} className="flex-grow" /></div><div className="flex gap-2"><button onClick={clearCanvas} className="btn btn-secondary flex-grow">Clear</button><button onClick={handleSave} className="btn btn-primary flex-grow">Save Drawing</button></div></div></Modal>
+    return <Modal isOpen={isOpen} onClose={onClose} title={t('notes.drawingPadTitle')}><div className="space-y-3"><canvas ref={canvasRef} width="300" height="300" onMouseDown={startDrawing} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchEnd={stopDrawing} className="rounded-lg w-full" style={{backgroundColor: 'var(--bg-primary)', touchAction: 'none'}}></canvas><div className="flex items-center gap-2"><label className="text-sm">{t('notes.drawingPadColor')}</label><div className="flex gap-1.5">{['#FFFFFF', '#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#d946ef'].map(c => <button key={c} onClick={() => setPenColor(c)} className={`w-6 h-6 rounded-full ${penColor === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)'} as React.CSSProperties}></button>)}</div></div><div className="flex items-center gap-2"><label className="text-sm">{t('notes.drawingPadSize')}</label><input type="range" min="1" max="20" value={penSize} onChange={e => setPenSize(Number(e.target.value))} className="flex-grow" /></div><div className="flex gap-2"><button onClick={clearCanvas} className="btn btn-secondary flex-grow">{t('notes.drawingPadClear')}</button><button onClick={handleSave} className="btn btn-primary flex-grow">{t('notes.drawingPadSave')}</button></div></div></Modal>
 };
 
 // --- Note Editor View ---
@@ -148,6 +180,7 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
   const [content, setContent] = useState('');
   const [noteFolderId, setNoteFolderId] = useState('');
   const [noteTagIds, setNoteTagIds] = useState<string[]>([]);
+  const [noteTheme, setNoteTheme] = useState('default');
   
   const [showConfirmCancel, setShowConfirmCancel] = useState(false);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
@@ -167,8 +200,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
   const imageInputRef = useRef<HTMLInputElement>(null);
   const selectionRef = useRef<Range | null>(null);
   
-  const initialData = useRef({ title, content, noteFolderId, noteTagIds });
-  const hasChanges = JSON.stringify({ title, content, noteFolderId, noteTagIds }) !== JSON.stringify(initialData.current);
+  const initialData = useRef({ title, content, noteFolderId, noteTagIds, noteTheme });
+  const hasChanges = JSON.stringify({ title, content, noteFolderId, noteTagIds, noteTheme }) !== JSON.stringify(initialData.current);
   
   useUnsavedChangesWarning(hasChanges);
 
@@ -178,11 +211,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
       content: noteToEdit?.content || '',
       noteFolderId: noteToEdit?.folderId || activeFolderId,
       noteTagIds: noteToEdit?.tagIds || [],
+      noteTheme: noteToEdit?.noteTheme || 'default',
     };
     setTitle(data.title);
     setContent(data.content);
     setNoteFolderId(data.noteFolderId);
     setNoteTagIds(data.noteTagIds);
+    setNoteTheme(data.noteTheme);
     initialData.current = data;
     if (contentRef.current && contentRef.current.innerHTML !== data.content) {
         contentRef.current.innerHTML = data.content;
@@ -266,10 +301,11 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
   const handleSave = () => {
     const noteData: Partial<TNote> = {
       id: noteToEdit?.id,
-      title: title.trim() || 'Untitled Note',
+      title: title.trim() || t('notes.untitledNote'),
       content: contentRef.current?.innerHTML || '',
       folderId: noteFolderId,
       tagIds: noteTagIds,
+      noteTheme: noteTheme === 'default' ? undefined : noteTheme,
     };
     onSave(noteData);
   };
@@ -278,8 +314,10 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
   const handleCreateTag = () => { if (newTagName.trim()) { setTags(prev => [...prev, { id: Date.now().toString(), name: newTagName.trim() }]); setNewTagName(''); } };
   const handleCreateFolder = () => { if (newFolderName.trim()) { const newFolder = { id: Date.now().toString(), name: newFolderName.trim() }; setFolders(prev => [...prev, newFolder]); setNoteFolderId(newFolder.id); setNewFolderName(''); }};
 
+  const noteThemeClass = noteTheme && noteTheme !== 'default' ? `note-theme-${noteTheme} note-themed` : '';
+
   return (
-    <div className="fixed inset-0 z-40 flex flex-col h-full animate-view-in" style={{backgroundColor: 'var(--bg-primary)'}}>
+    <div className={`fixed inset-0 z-40 flex flex-col h-full animate-view-in ${noteThemeClass}`} style={{backgroundColor: noteThemeClass ? undefined : 'var(--bg-primary)'}}>
         <style>{`
             .editor-content :is(ul, ol) { margin-left: 1.5rem; padding-left: 0.5rem; } .editor-content ul { list-style-type: disc; } .editor-content ol { list-style-type: decimal; }
             .editor-content a { color: var(--accent-primary); text-decoration: underline; }
@@ -292,7 +330,8 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
         </header>
         <main className="flex-grow overflow-y-auto px-4 flex flex-col"><EditBar onCommand={handleCommand} onMediaAction={handleMediaAction} isRecording={isRecording} /><div ref={contentRef} contentEditable onInput={e => setContent((e.target as HTMLDivElement).innerHTML)} className="editor-content focus:outline-none w-full flex-grow"/></main>
         <input type="file" ref={imageInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-        <footer className="flex-shrink-0 p-4 border-t space-y-3" style={{borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-primary)'}}>
+        <footer className="flex-shrink-0 p-4 border-t space-y-3" style={{borderColor: 'var(--border-color)', backgroundColor: noteThemeClass ? undefined : 'var(--bg-primary)'}}>
+            <NoteThemePicker selectedTheme={noteTheme} onSelectTheme={setNoteTheme} />
             <div className="flex items-center gap-3">
                 <i className="fa-solid fa-folder-open w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
                 <div className="flex-grow"><CustomSelect options={folders.map(f => ({value: f.id, label: f.name}))} value={noteFolderId} onChange={setNoteFolderId}/></div>
@@ -300,15 +339,15 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
             </div>
             <div className="flex items-center gap-3">
                 <i className="fa-solid fa-tags w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
-                <div className="flex-grow"><MultiSelectDropdown options={tags.map(t => ({value: t.id, label: t.name}))} selectedValues={noteTagIds} onChange={setNoteTagIds} placeholder="Select tags..."/></div>
+                <div className="flex-grow"><MultiSelectDropdown options={tags.map(t => ({value: t.id, label: t.name}))} selectedValues={noteTagIds} onChange={setNoteTagIds} placeholder={t('notes.selectTagsPlaceholder')}/></div>
                 <button onClick={() => setIsManageTagsOpen(true)} className="btn btn-secondary btn-icon text-xs flex-shrink-0"><i className="fa-solid fa-gear"></i></button>
             </div>
             <div className="flex gap-2 pt-2">{noteToEdit && <button onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label={t('notes.delete')}><i className="fa-solid fa-trash"></i></button>}<button onClick={handleSave} disabled={!hasChanges} className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button></div>
         </footer>
-        <Modal isOpen={showConfirmCancel} onClose={() => setShowConfirmCancel(false)} title="Unsaved Changes"><p className="mb-4 text-center" style={{color: 'var(--text-secondary)'}}>Discard changes?</p><div className="pt-2"><button onClick={onCancel} className="w-full btn btn-danger">Discard</button></div></Modal>
-        <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Are you sure?"><p className="mb-4 text-center" style={{color: 'var(--text-secondary)'}}>Permanently delete this note?</p><div className="pt-2"><button onClick={() => { if (noteToEdit) onDelete(noteToEdit.id); }} className="w-full btn btn-danger">Yes</button></div></Modal>
-        <Modal isOpen={isManageTagsOpen} onClose={() => setIsManageTagsOpen(false)} title="Manage Tags"><form onSubmit={(e) => { e.preventDefault(); handleCreateTag(); }} className="flex gap-2"><input type="text" value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder="New tag name..." className="form-input flex-grow" /><button type="submit" className="btn btn-primary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button></form></Modal>
-        <Modal isOpen={isManageFoldersOpen} onClose={() => setIsManageFoldersOpen(false)} title="Manage Folders"><form onSubmit={(e) => { e.preventDefault(); handleCreateFolder(); }} className="flex gap-2"><input type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder="New folder name..." className="form-input flex-grow" /><button type="submit" className="btn btn-primary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button></form></Modal>
+        <Modal isOpen={showConfirmCancel} onClose={() => setShowConfirmCancel(false)} title={t('notes.confirmCancelTitle')}><p className="mb-4 text-center" style={{color: 'var(--text-secondary)'}}>{t('notes.confirmCancelMessage')}</p><div className="pt-2"><button onClick={onCancel} className="w-full btn btn-danger">{t('notes.confirmCancelDiscard')}</button></div></Modal>
+        <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title={t('notes.confirmDeleteTitle')}><p className="mb-4 text-center" style={{color: 'var(--text-secondary)'}}>{t('notes.confirmDeleteMessage')}</p><div className="pt-2"><button onClick={() => { if (noteToEdit) onDelete(noteToEdit.id); }} className="w-full btn btn-danger">{t('notes.confirmDeleteConfirm')}</button></div></Modal>
+        <Modal isOpen={isManageTagsOpen} onClose={() => setIsManageTagsOpen(false)} title={t('notes.manageTags')}><form onSubmit={(e) => { e.preventDefault(); handleCreateTag(); }} className="flex gap-2"><input type="text" value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder={t('notes.newTagPlaceholder')} className="form-input flex-grow" /><button type="submit" className="btn btn-primary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button></form></Modal>
+        <Modal isOpen={isManageFoldersOpen} onClose={() => setIsManageFoldersOpen(false)} title={t('notes.manageFolders')}><form onSubmit={(e) => { e.preventDefault(); handleCreateFolder(); }} className="flex gap-2"><input type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder={t('notes.newFolderPlaceholder')} className="form-input flex-grow" /><button type="submit" className="btn btn-primary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button></form></Modal>
         <LinkModal isOpen={isLinkModalOpen} onClose={() => setIsLinkModalOpen(false)} onSave={handleLinkSave} initialText={selectionRef.current?.toString() || ''} />
         <DrawingModal isOpen={isDrawingModalOpen} onClose={() => setIsDrawingModalOpen(false)} onSave={handleDrawingSave} />
     </div>
@@ -360,7 +399,7 @@ function NotesPage() {
     if (noteData.id) {
       setNotes(prev => prev.map(n => n.id === noteData.id ? { ...n, ...noteData, updatedAt: new Date().toISOString() } as TNote : n));
     } else {
-      const newNote: TNote = { title: 'Untitled Note', content: '', tagIds: [], ...noteData, id: Date.now().toString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as TNote;
+      const newNote: TNote = { title: t('notes.untitledNote'), content: '', tagIds: [], ...noteData, id: Date.now().toString(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() } as TNote;
       setNotes(prev => [newNote, ...prev]);
     }
     setView('list');
@@ -373,7 +412,7 @@ function NotesPage() {
     setSelectedNote(null);
   };
 
-  const folderOptions = [{ value: 'all', label: 'All Notes', className: 'text-lg font-bold py-1' }, ...folders.map(f => ({ value: f.id, label: f.name }))];
+  const folderOptions = [{ value: 'all', label: t('notes.allNotes'), className: 'text-lg font-bold py-1' }, ...folders.map(f => ({ value: f.id, label: f.name }))];
   const tagOptions = availableTags.map(tag => ({ value: tag.id, label: tag.name }));
 
   if (view === 'editor') return <NoteEditor noteToEdit={selectedNote} activeFolderId={selectedFolderId === 'all' ? 'uncategorized' : selectedFolderId} onSave={handleSaveNote} onCancel={() => { setView('list'); setSelectedNote(null); }} onDelete={handleDeleteNote} />;
@@ -392,15 +431,16 @@ function NotesPage() {
           <div className="space-y-3">
             {filteredNotes.map(note => {
               const folder = folders.find(f => f.id === note.folderId);
+              const noteThemeClass = note.noteTheme ? `note-theme-${note.noteTheme} note-themed` : '';
               return (
-                <button key={note.id} onClick={() => { setSelectedNote(note); setView('editor'); }} className="w-full text-left flex gap-3 p-3 rounded-lg transition-all duration-150 hover:bg-[var(--bg-tertiary)] active:scale-[0.99]" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                <button key={note.id} onClick={() => { setSelectedNote(note); setView('editor'); }} className={`w-full text-left flex gap-3 p-3 rounded-lg transition-all duration-150 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] ${noteThemeClass}`} style={noteThemeClass ? {} : {backgroundColor: 'var(--bg-secondary)'}}>
                   <div className="flex-grow overflow-hidden">
                     <h3 className="font-bold truncate">{note.title}</h3>
-                    <p className="text-sm truncate mt-1" style={{color: 'var(--text-secondary)'}}>{stripHtml(note.content)}</p>
+                    <p className="text-sm truncate mt-1" style={{color: noteThemeClass ? undefined : 'var(--text-secondary)'}}>{stripHtml(note.content)}</p>
                     <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{backgroundColor: 'var(--bg-quaternary)', color: 'var(--text-secondary)'}}><i className="fa-solid fa-folder"></i>{folder?.name || 'Uncategorized'}</span>
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{backgroundColor: noteThemeClass ? 'rgba(0,0,0,0.15)' : 'var(--bg-quaternary)', color: noteThemeClass ? undefined : 'var(--text-secondary)'}}><i className="fa-solid fa-folder"></i>{folder?.name || t('notes.uncategorized')}</span>
                         <div className="flex flex-wrap gap-1">
-                          {note.tagIds.map(tagId => tags.find(t => t.id === tagId)).filter(Boolean).map(tag => <span key={tag!.id} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: 'var(--bg-quaternary)', color: 'var(--text-secondary)'}}>{tag!.name}</span>)}
+                          {note.tagIds.map(tagId => tags.find(t => t.id === tagId)).filter(Boolean).map(tag => <span key={tag!.id} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: noteThemeClass ? 'rgba(0,0,0,0.15)' : 'var(--bg-quaternary)', color: noteThemeClass ? undefined : 'var(--text-secondary)'}}>{tag!.name}</span>)}
                         </div>
                     </div>
                   </div>

@@ -39,6 +39,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
       { id: 'dark', labelKey: 'settings.dark', icon: 'fa-moon' },
       { id: 'light', labelKey: 'settings.light', icon: 'fa-sun' },
       { id: 'cute', labelKey: 'settings.cute', icon: 'fa-heart' },
+      { id: 'monochrome', labelKey: 'settings.monochrome', icon: 'fa-palette' },
   ];
 
   return (
@@ -60,7 +61,7 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
             {/* Theme Settings */}
             <div className="p-4 rounded-lg" style={{ backgroundColor: 'var(--bg-secondary)' }}>
                 <h2 className="text-lg font-semibold mb-2" style={{ color: 'var(--text-primary)'}}>{t('settings.theme')}</h2>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                     {themeOptions.map(themeOption => (
                         <button 
                             key={themeOption.id}
