@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kairo</title>
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0f172a" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" integrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2TkcmfRyVX3pBnMFcV7oQPJkl9QevSCWr3W6A==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+      /* Hide scrollbar for Chrome, Safari and Opera */
+      body::-webkit-scrollbar,
+      .overflow-y-auto::-webkit-scrollbar {
+        display: none;
+      }
+
+      /* Hide scrollbar for IE, Edge and Firefox */
+      body,
+      .overflow-y-auto {
+        -ms-overflow-style: none;  /* IE and Edge */
+        scrollbar-width: none;  /* Firefox */
+      }
+      
+      /* --- THEME DEFINITIONS --- */
+      body[data-theme='dark'] {
+          --bg-primary: #020617; /* slate-950 */
+          --bg-secondary: #0f172a; /* slate-900 */
+          --bg-tertiary: #1e293b; /* slate-800 */
+          --bg-quaternary: #334155; /* slate-700 */
+          --text-primary: #e2e8f0; /* slate-200 */
+          --text-secondary: #94a3b8; /* slate-400 */
+          --text-tertiary: #64748b; /* slate-500 */
+          --text-inverted: #020617;
+          --border-color: #334155; /* slate-700 */
+          --accent-primary: #d946ef; /* fuchsia-500 */
+          --accent-secondary: #e879f9; /* fuchsia-400 */
+          --accent-text: #f8fafc; /* slate-50 */
+          --danger-primary: #f87171; /* red-400 */
+          --danger-secondary-bg: rgba(239, 68, 68, 0.1);
+          --danger-tertiary-bg: rgba(239, 68, 68, 0.2);
+          --success-primary: #4ade80; /* green-400 */
+          --shadow-color: 217 119 6 / 0.05;
+          --font-family: 'system-ui', 'sans-serif';
+      }
+
+      body[data-theme='light'] {
+          --bg-primary: #f1f5f9; /* slate-100 */
+          --bg-secondary: #ffffff;
+          --bg-tertiary: #e2e8f0; /* slate-200 */
+          --bg-quaternary: #cbd5e1; /* slate-300 */
+          --text-primary: #1e293b; /* slate-800 */
+          --text-secondary: #475569; /* slate-600 */
+          --text-tertiary: #64748b; /* slate-500 */
+          --text-inverted: #f8fafc;
+          --border-color: #e2e8f0; /* slate-200 */
+          --accent-primary: #c026d3; /* fuchsia-600 */
+          --accent-secondary: #d946ef; /* fuchsia-500 */
+          --accent-text: #f8fafc;
+          --danger-primary: #dc2626; /* red-600 */
+          --danger-secondary-bg: rgba(220, 38, 38, 0.1);
+          --danger-tertiary-bg: rgba(220, 38, 38, 0.2);
+          --success-primary: #16a34a; /* green-600 */
+          --shadow-color: 9 9 11 / 0.1;
+          --font-family: 'system-ui', 'sans-serif';
+      }
+
+      body[data-theme='cute'] {
+          --bg-primary: #fdf2f8; /* pink-50 */
+          --bg-secondary: #ffffff;
+          --bg-tertiary: #fae8ff; /* fuchsia-100 */
+          --bg-quaternary: #f5d0fe; /* fuchsia-200 */
+          --text-primary: #581c87; /* purple-900 */
+          --text-secondary: #7e22ce; /* purple-700 */
+          --text-tertiary: #a855f7; /* purple-500 */
+          --text-inverted: #ffffff;
+          --border-color: #e9d5ff; /* purple-200 */
+          --accent-primary: #f472b6; /* pink-400 */
+          --accent-secondary: #fb7185; /* rose-400 */
+          --accent-text: #ffffff;
+          --danger-primary: #f43f5e; /* rose-500 */
+          --danger-secondary-bg: rgba(244, 63, 94, 0.1);
+          --danger-tertiary-bg: rgba(244, 63, 94, 0.2);
+          --success-primary: #34d399; /* emerald-400 */
+          --shadow-color: 217 70 239 / 0.1;
+          --font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', cursive;
+      }
+
+      /* Apply theme variables */
+      body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: var(--font-family);
+        transition: background-color 0.3s ease, color 0.3s ease;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+      .font-sans { font-family: var(--font-family); }
+      .bg-slate-950 { background-color: var(--bg-primary); }
+      .text-slate-200 { color: var(--text-primary); }
+      
+      input, textarea, [contenteditable="true"] {
+          user-select: text;
+          -webkit-user-select: text;
+      }
+
+      /* Base Button Styles */
+      .btn {
+        padding: 0.3rem 0.7rem;
+        border-radius: 0.35rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        transition: all 0.15s ease-out;
+        transform-origin: center;
+        border: none;
+        cursor: pointer;
+      }
+      .btn:hover {
+        transform: scale(1.03);
+      }
+      .btn:active {
+        transform: scale(0.97);
+      }
+      .btn:disabled {
+        background-color: var(--bg-quaternary);
+        color: var(--text-tertiary);
+        cursor: not-allowed;
+        transform: none;
+        opacity: 0.7;
+      }
+
+      /* Button Variants */
+      .btn-primary {
+        background-color: var(--accent-primary);
+        color: var(--accent-text);
+      }
+      .btn-primary:hover:not(:disabled) {
+        background-color: var(--accent-secondary);
+      }
+      .btn-secondary {
+        background-color: var(--bg-tertiary);
+        color: var(--text-primary);
+      }
+      .btn-secondary:hover:not(:disabled) {
+        background-color: var(--bg-quaternary);
+      }
+      .btn-danger {
+        background-color: var(--danger-secondary-bg);
+        color: var(--danger-primary);
+      }
+      .btn-danger:hover:not(:disabled) {
+        background-color: var(--danger-tertiary-bg);
+      }
+      
+      .btn-icon {
+        width: 2rem;
+        height: 2rem;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.85rem;
+      }
+
+      /* Form Input Styles */
+      .form-input, .form-select {
+        width: 100%;
+        background-color: var(--bg-tertiary);
+        border-radius: 0.35rem;
+        padding: 0.4rem 0.6rem;
+        color: var(--text-primary);
+        border: 2px solid var(--bg-tertiary);
+        transition: all 0.2s ease-in-out;
+        font-size: 0.9rem;
+      }
+      .form-input:focus, .form-select:focus {
+        outline: none;
+        border-color: var(--accent-primary);
+        box-shadow: 0 0 0 1px var(--accent-primary);
+      }
+
+      /* Dropdown Animation */
+      @keyframes dropdown-in {
+        from {
+          opacity: 0;
+          transform: scale(0.95) translateY(-5px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+      @keyframes dropdown-out {
+        from {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+        to {
+          opacity: 0;
+          transform: scale(0.95) translateY(-5px);
+        }
+      }
+      .animate-dropdown-in {
+        transform-origin: top;
+        animation: dropdown-in 0.1s ease-out forwards;
+      }
+      .animate-dropdown-out {
+        transform-origin: top;
+        animation: dropdown-out 0.1s ease-out forwards;
+      }
+
+      /* View Transition Animation */
+      @keyframes view-in {
+        from { opacity: 0; transform: scale(0.98); }
+        to { opacity: 1; transform: scale(1); }
+      }
+      @keyframes view-out {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0; transform: scale(0.98); }
+      }
+      .animate-view-in {
+        animation: view-in 0.15s ease-out forwards;
+      }
+      .animate-view-out {
+        animation: view-out 0.15s ease-out forwards;
+      }
+      
+      @keyframes jiggle {
+        0%, 100% { transform: rotate(-1deg); }
+        50% { transform: rotate(1deg); }
+      }
+      .dragging {
+        opacity: 0.8;
+        background: var(--accent-secondary);
+        cursor: grabbing;
+        animation: jiggle 0.3s infinite;
+      }
+      .placeholder {
+        height: 44px; /* Adjust to match item height */
+        background-color: var(--bg-quaternary);
+        border-radius: 0.375rem; /* rounded-md */
+        border: 2px dashed var(--accent-primary);
+        margin: 4px 0;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.1.1/",
+    "react": "https://aistudiocdn.com/react@^19.1.1",
+    "react-router-dom": "https://aistudiocdn.com/react-router-dom@^7.8.2",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+  }
+}
+</script>
+</head>
+  <body class="antialiased">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').then(registration => {
+            console.log('ServiceWorker registration successful with scope: ', registration.scope);
+          }, err => {
+            console.log('ServiceWorker registration failed: ', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
