@@ -90,7 +90,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({ options, sele
             {options.map(option => (
               <li
                 key={option.value}
-                className="px-4 py-2 cursor-pointer hover:bg-[var(--accent-primary)]/20 flex items-center gap-3"
+                className="px-4 py-2 cursor-pointer multi-select-item flex items-center gap-3"
                 onClick={() => handleOptionClick(option.value)}
               >
                 <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${selectedValues.includes(option.value) ? 'bg-[var(--accent-primary)] border-[var(--accent-primary)]' : 'border-[var(--text-tertiary)]'}`}>
@@ -102,6 +102,11 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({ options, sele
           </ul>
         </div>
       )}
+      <style>{`
+        .multi-select-item:hover {
+          background-color: rgba(var(--accent-primary-rgb), 0.2);
+        }
+      `}</style>
     </div>
   );
 };

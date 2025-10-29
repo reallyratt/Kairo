@@ -49,15 +49,15 @@ function Header({ titleKey }: HeaderProps) {
         </button>
         {menuOpen && (
           <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl py-1 z-50 transform origin-top-right animate-fade-in-down" style={{ backgroundColor: 'var(--bg-quaternary)' }}>
-            <button onClick={handleSettingsClick} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-600 transition-colors" style={{ color: 'var(--text-primary)'}}>
+            <button onClick={handleSettingsClick} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm header-menu-item transition-colors" style={{ color: 'var(--text-primary)'}}>
               <i className="fa-solid fa-gear w-5 text-center"></i>
               <span>{t('header.settings')}</span>
             </button>
-            <button onClick={handleDataClick} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-600 transition-colors" style={{ color: 'var(--text-primary)'}}>
+            <button onClick={handleDataClick} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm header-menu-item transition-colors" style={{ color: 'var(--text-primary)'}}>
               <i className="fa-solid fa-database w-5 text-center"></i>
               <span>Data</span>
             </button>
-            <button onClick={handleAboutClick} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm hover:bg-slate-600 transition-colors" style={{ color: 'var(--text-primary)'}}>
+            <button onClick={handleAboutClick} className="w-full text-left flex items-center gap-3 px-4 py-2 text-sm header-menu-item transition-colors" style={{ color: 'var(--text-primary)'}}>
               <i className="fa-solid fa-circle-info w-5 text-center"></i>
               <span>About</span>
             </button>
@@ -72,9 +72,8 @@ function Header({ titleKey }: HeaderProps) {
         .animate-fade-in-down {
             animation: fade-in-down 0.1s ease-out forwards;
         }
-        .hover\\:bg-slate-600:hover {
-            background-color: var(--accent-primary) !important;
-            color: var(--accent-text) !important;
+        .header-menu-item:hover {
+            background-color: rgba(var(--accent-primary-rgb), 0.2);
         }
       `}</style>
     </header>

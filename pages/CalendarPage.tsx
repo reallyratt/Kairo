@@ -278,7 +278,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
                 <div className="flex-grow">
                     <div className="grid grid-cols-7 gap-2">
                         {COLORS.map(c => (
-                            <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                            <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active-scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
                         ))}
                     </div>
                 </div>
@@ -353,17 +353,18 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
         calendarCategoryOrder, setCalendarCategoryOrder,
         hiddenInOverview, setHiddenInOverview
     } = useAppContext();
+    const { t } = useTranslation();
     
     const [managedItems, setManagedItems] = useState<ManagedItem[]>([]);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [categoryError, setCategoryError] = useState('');
     const [editingCategory, setEditingCategory] = useState<TCalendarCategory | null>(null);
-    const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+
+    const [newCalendarName, setNewCalendarName] = useState('');
+    const [newCalendarColor, setNewCalendarColor] = useState(COLORS[0]);
+    const [calendarNameError, setCalendarNameError] = useState('');
+    const [isAddingCalendar, setIsAddingCalendar] = useState(false);
     
-    const [isDraggingCalendar, setIsDraggingCalendar] = useState(false);
-
-    const draggedItemIndex = useRef<number | null>(null);
-
     // Build the unified list for management
     useEffect(() => {
         if (!isOpen) return;
@@ -371,6 +372,10 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
         setNewCategoryName('');
         setCategoryError('');
         setEditingCategory(null);
+        setNewCalendarName('');
+        setNewCalendarColor(COLORS[0]);
+        setCalendarNameError('');
+        setIsAddingCalendar(false);
 
         const finalRenderList: ManagedItem[] = [];
         const calendarMap = new Map(calendars.map(c => [c.id, c]));
@@ -394,7 +399,6 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
             }
         }
         
-        // Add uncategorized calendars first to display them at the top
         uncategorized.forEach(cal => {
             finalRenderList.push({ id: cal.id, type: 'calendar', data: cal });
         });
@@ -437,6 +441,8 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
         setCalendarOrder(newCalendarOrder);
         setCalendarCategoryOrder(newCategoryOrder);
         setCalendars(updatedCalendars);
+        // We need to update the local managedItems state as well to reflect the change immediately
+        setManagedItems(items);
     };
     
     const handleAddCategory = (e: React.FormEvent) => {
@@ -473,98 +479,122 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
                 : [...prev, calendarId]
         );
     };
-    
-    const handleDragStart = (e: React.DragEvent, index: number) => {
-        const item = managedItems[index];
-        draggedItemIndex.current = index;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', item.id);
-    
-        setTimeout(() => {
-            setDraggedItemId(item.id);
-            if (item.type === 'calendar') {
-                setIsDraggingCalendar(true);
+
+    const handleMove = (index: number, direction: -1 | 1) => {
+        const newIndex = index + direction;
+        if (newIndex < 0 || newIndex >= managedItems.length) return;
+
+        const itemsCopy = [...managedItems];
+        [itemsCopy[index], itemsCopy[newIndex]] = [itemsCopy[newIndex], itemsCopy[index]]; // Swap
+        updateGlobalState(itemsCopy);
+    };
+
+    const handleUncategorize = (index: number) => {
+        const itemsCopy = [...managedItems];
+        const [itemToMove] = itemsCopy.splice(index, 1);
+
+        let lastUncategorizedIndex = -1;
+        for (let i = 0; i < itemsCopy.length; i++) {
+            const item = itemsCopy[i];
+            const isUncategorized = item.type === 'calendar' && (!item.data.categoryId || !calendarCategories.some(c => c.id === (item.data as TCalendar).categoryId));
+            if (isUncategorized) {
+                lastUncategorizedIndex = i;
+            } else {
+                break; 
             }
-        }, 0);
-    };
-
-    const handleDrop = (e: React.DragEvent, dropIndex: number) => {
-        e.preventDefault();
-        const dragIndex = draggedItemIndex.current;
-        
-        if (dragIndex === null || dragIndex === dropIndex) return;
-
-        const listCopy = [...managedItems];
-        const draggedItem = listCopy[dragIndex];
-
-        const dropItem = listCopy[dropIndex];
-        const isDropTargetUncategorized = dropItem.type === 'calendar' && !calendars.find(c => c.id === dropItem.id)?.categoryId;
-        if (draggedItem.type === 'category' && isDropTargetUncategorized) return;
-
-        listCopy.splice(dragIndex, 1);
-        listCopy.splice(dropIndex, 0, draggedItem);
-        
-        updateGlobalState(listCopy);
-    };
-
-    const handleUncategorizeDrop = (e: React.DragEvent) => {
-        e.preventDefault();
-        if (draggedItemIndex.current === null) return;
-    
-        const listCopy = [...managedItems];
-        const [draggedItemContent] = listCopy.splice(draggedItemIndex.current, 1);
-    
-        if (draggedItemContent.type === 'calendar') {
-            listCopy.unshift(draggedItemContent);
-            updateGlobalState(listCopy);
         }
+        itemsCopy.splice(lastUncategorizedIndex + 1, 0, itemToMove);
+        updateGlobalState(itemsCopy);
     };
 
-    const handleDragEnd = () => {
-        setDraggedItemId(null);
-        draggedItemIndex.current = null;
-        setIsDraggingCalendar(false);
+    const handleAddNewCalendar = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newCalendarName.trim()) {
+            setCalendarNameError('Calendar name is required.');
+            return;
+        }
+        const newCal: TCalendar = { id: Date.now().toString(), name: newCalendarName.trim(), color: newCalendarColor };
+        setCalendars(prev => [...prev, newCal]);
+        setCalendarOrder(prev => [...prev, newCal.id]);
+        setNewCalendarName('');
+        setNewCalendarColor(COLORS[0]);
+        setCalendarNameError('');
+        setIsAddingCalendar(false);
+    };
+
+    const isUpDisabled = (index: number) => {
+        if (index === 0) return true;
+        const itemToMove = managedItems[index];
+        const itemToSwap = managedItems[index - 1];
+        const isSwappingWithUncategorized = itemToSwap.type === 'calendar' && !(itemToSwap.data as TCalendar).categoryId;
+        
+        return itemToMove.type === 'category' && isSwappingWithUncategorized;
     };
     
-    const handleDragOver = (e: React.DragEvent) => {
-        e.preventDefault();
-    };
-
     return (
         <Modal isOpen={isOpen} onClose={onClose} title="Manage">
-            <div 
-                className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 rounded-lg transition-all"
-                onDragOver={isDraggingCalendar ? handleDragOver : undefined}
-                onDrop={isDraggingCalendar ? handleUncategorizeDrop : undefined}
-            >
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 rounded-lg">
                 <form onSubmit={handleAddCategory} className="flex gap-2">
                     <div className="flex-grow relative flex items-center">
                         <i className="fa-solid fa-folder-plus absolute left-3 text-lg pointer-events-none" style={{color: 'var(--text-tertiary)'}}></i>
-                        <input type="text" placeholder="New category name" value={newCategoryName} onChange={e => { setNewCategoryName(e.target.value); if(categoryError) setCategoryError(''); }} className="form-input flex-grow pl-10" />
+                        <input type="text" placeholder={t('calendar.newCategoryPlaceholder')} value={newCategoryName} onChange={e => { setNewCategoryName(e.target.value); if(categoryError) setCategoryError(''); }} className="form-input flex-grow pl-10" />
                     </div>
                     <button type="submit" className="btn btn-primary btn-icon flex-shrink-0" aria-label="Add Category"><i className="fa-solid fa-plus"></i></button>
                 </form>
                 {categoryError && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{categoryError}</p>}
 
-                <p className="text-xs" style={{color: 'var(--text-secondary)'}}>Drag and drop to reorder calendars and assign them to categories.</p>
+                <div className="w-full h-px my-4" style={{backgroundColor: 'var(--border-color)'}}></div>
+
+                {isAddingCalendar ? (
+                    <div className="animate-view-in p-3 rounded-lg" style={{backgroundColor: 'var(--bg-tertiary)'}}>
+                        <form onSubmit={handleAddNewCalendar} className="space-y-3">
+                            <div>
+                                <label htmlFor="new-cal-name" className="text-sm font-medium sr-only">{t('calendar.addCalendarNamePlaceholder')}</label>
+                                <div className="flex-grow relative flex items-center">
+                                    <i className="fa-solid fa-calendar-plus absolute left-3 text-lg pointer-events-none" style={{color: 'var(--text-tertiary)'}}></i>
+                                    <input 
+                                        id="new-cal-name"
+                                        type="text" 
+                                        placeholder={t('calendar.addCalendarNamePlaceholder')} 
+                                        value={newCalendarName} 
+                                        onChange={e => { setNewCalendarName(e.target.value); if(calendarNameError) setCalendarNameError(''); }} 
+                                        className="form-input flex-grow pl-10" 
+                                        autoFocus
+                                    />
+                                </div>
+                                {calendarNameError && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{calendarNameError}</p>}
+                            </div>
+                            
+                            <div className="grid grid-cols-7 gap-2 px-2">
+                                {COLORS.map(c => (
+                                    <button type="button" key={c} onClick={() => setNewCalendarColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active-scale-95 ${newCalendarColor === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                                ))}
+                            </div>
+                            <div className="flex gap-2">
+                                <button type="button" onClick={() => setIsAddingCalendar(false)} className="flex-grow btn btn-secondary">{t('common.cancel')}</button>
+                                <button type="submit" className="flex-grow btn btn-primary">{t('common.create')}</button>
+                            </div>
+                        </form>
+                    </div>
+                ) : (
+                    <button onClick={() => setIsAddingCalendar(true)} className="w-full btn btn-secondary flex items-center justify-center gap-2">
+                        <i className="fa-solid fa-plus"></i>
+                        {t('calendar.addCalendar')}
+                    </button>
+                )}
+
+
+                <div className="w-full h-px my-4" style={{backgroundColor: 'var(--border-color)'}}></div>
+
+
+                <p className="text-xs" style={{color: 'var(--text-secondary)'}}>{t('calendar.dragAndDropHint')}</p>
 
                 <div className="space-y-2">
                     {managedItems.map((item, index) => {
-                        const isBeingDragged = draggedItemId === item.id;
                         if (item.type === 'category') {
                             const category = item.data as TCalendarCategory;
                             return (
-                                <div 
-                                    key={category.id} 
-                                    className={`flex items-center gap-2 p-2 rounded-md cursor-grab active:cursor-grabbing ${isBeingDragged ? 'dragging' : ''}`}
-                                    style={{backgroundColor: 'var(--bg-tertiary)'}}
-                                    draggable
-                                    onDragStart={e => handleDragStart(e, index)}
-                                    onDragOver={handleDragOver}
-                                    onDrop={e => { e.stopPropagation(); handleDrop(e, index); }}
-                                    onDragEnd={handleDragEnd}
-                                >
-                                    <i className="fa-solid fa-grip-vertical" style={{color: 'var(--text-tertiary)'}}></i>
+                                <div key={category.id} className="flex items-center gap-2 p-2 rounded-md" style={{backgroundColor: 'var(--bg-tertiary)'}}>
                                     {editingCategory?.id === category.id ? (
                                         <input
                                             type="text"
@@ -580,31 +610,35 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
                                     )}
                                     <button onClick={() => setEditingCategory(category)} className="btn btn-secondary btn-icon text-xs" aria-label="Rename Category"><i className="fa-solid fa-pencil"></i></button>
                                     <button onClick={() => handleDeleteCategory(category.id)} className="btn btn-danger btn-icon text-xs" aria-label="Delete Category"><i className="fa-solid fa-trash"></i></button>
+                                     <div className="flex flex-col">
+                                        <button onClick={() => handleMove(index, -1)} disabled={isUpDisabled(index)} className="btn btn-secondary btn-icon h-4 w-6 rounded-b-none text-xs disabled:opacity-30"><i className="fa-solid fa-chevron-up"></i></button>
+                                        <button onClick={() => handleMove(index, 1)} disabled={index === managedItems.length - 1} className="btn btn-secondary btn-icon h-4 w-6 rounded-t-none text-xs disabled:opacity-30"><i className="fa-solid fa-chevron-down"></i></button>
+                                    </div>
                                 </div>
                             )
                         } else {
                             const cal = item.data as TCalendar;
                             const isUncategorized = !cal.categoryId || !calendarCategories.some(c => c.id === cal.categoryId);
                             return (
-                                <div
-                                    key={cal.id} 
-                                    className={`flex items-center gap-3 p-2 rounded-md cursor-grab active:cursor-grabbing ${isUncategorized ? '' : 'ml-4'} ${isBeingDragged ? 'dragging' : ''}`}
-                                    style={{backgroundColor: 'var(--bg-quaternary)'}}
-                                    draggable
-                                    onDragStart={e => handleDragStart(e, index)}
-                                    onDragOver={handleDragOver}
-                                    onDrop={e => { e.stopPropagation(); handleDrop(e, index); }}
-                                    onDragEnd={handleDragEnd}
-                                >
-                                    <i className="fa-solid fa-grip-vertical" style={{color: 'var(--text-tertiary)'}}></i>
+                                <div key={cal.id} className={`flex items-center gap-3 p-2 rounded-md ${isUncategorized ? '' : 'ml-4'}`} style={{backgroundColor: 'var(--bg-quaternary)'}}>
                                      <input 
                                         type="checkbox" 
                                         checked={!hiddenInOverview.includes(cal.id)} 
                                         onChange={() => handleVisibilityToggle(cal.id)}
                                         className="w-5 h-5 rounded accent-fuchsia-500 bg-slate-600 flex-shrink-0"
                                         style={{accentColor: 'var(--accent-primary)'}}
+                                        title="Show in Overview"
                                     />
                                     <span className="flex-grow font-semibold truncate" style={{color: cal.color}}>{cal.name}</span>
+                                    <div className="ml-auto flex items-center gap-1">
+                                        {!isUncategorized && (
+                                            <button onClick={() => handleUncategorize(index)} className="btn btn-secondary btn-icon h-8 w-6 text-xs" title="Uncategorize"><i className="fa-solid fa-arrow-turn-up fa-flip-horizontal"></i></button>
+                                        )}
+                                        <div className="flex flex-col">
+                                            <button onClick={() => handleMove(index, -1)} disabled={isUpDisabled(index)} className="btn btn-secondary btn-icon h-4 w-6 rounded-b-none text-xs disabled:opacity-30" title="Move Up"><i className="fa-solid fa-chevron-up"></i></button>
+                                            <button onClick={() => handleMove(index, 1)} disabled={index === managedItems.length - 1} className="btn btn-secondary btn-icon h-4 w-6 rounded-t-none text-xs disabled:opacity-30" title="Move Down"><i className="fa-solid fa-chevron-down"></i></button>
+                                        </div>
+                                    </div>
                                 </div>
                             )
                         }
@@ -623,7 +657,6 @@ function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedCalendarId, setSelectedCalendarId] = useState('overview');
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
-  const [isAddCalendarModalOpen, setIsAddCalendarModalOpen] = useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
   const [isManageOverviewOpen, setIsManageOverviewOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(new Date());
@@ -823,14 +856,6 @@ function CalendarPage() {
     setEvents(prev => prev.filter(e => !idsToDelete.has(e.id)));
     setIsEventModalOpen(false);
   }
-  
-  const handleAddCalendar = (name: string, color: string) => {
-    if (!name || !color) return;
-    const newCal: TCalendar = { id: Date.now().toString(), name, color };
-    setCalendars([...calendars, newCal]);
-    setCalendarOrder(prev => [...prev, newCal.id]);
-    setIsAddCalendarModalOpen(false);
-  };
 
   const handleUpdateCalendar = (id: string, name: string, color: string) => {
     setCalendars(calendars.map(c => c.id === id ? { ...c, name, color } : c));
@@ -907,7 +932,6 @@ function CalendarPage() {
               <div className="flex items-center gap-2 mb-4">
                   <CustomSelect options={calendarOptions} value={selectedCalendarId} onChange={setSelectedCalendarId} className="flex-grow" />
                   <button onClick={() => selectedCalendarId === 'overview' ? setIsManageOverviewOpen(true) : setIsManageModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-gear"></i></button>
-                  <button onClick={() => setIsAddCalendarModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button>
               </div>
 
               {/* --- Calendar View --- */}
@@ -1004,7 +1028,6 @@ function CalendarPage() {
         initialData={editingEvent || { date: toYYYYMMDD(selectedDate || new Date()) }}
         activeCalendarId={selectedCalendarId}
       />
-      <AddCalendarModal isOpen={isAddCalendarModalOpen} onClose={() => setIsAddCalendarModalOpen(false)} onAdd={handleAddCalendar} />
       {selectedCalendar && selectedCalendar.id !== 'overview' && (
           <ManageCalendarModal isOpen={isManageModalOpen} onClose={() => setIsManageModalOpen(false)} calendar={selectedCalendar} onUpdate={handleUpdateCalendar} onDelete={handleDeleteCalendar} />
       )}
@@ -1013,48 +1036,7 @@ function CalendarPage() {
   );
 }
 
-// --- Add/Manage Calendar Modals ---
-const AddCalendarModal: React.FC<{isOpen: boolean, onClose: () => void, onAdd: (name: string, color: string) => void}> = ({isOpen, onClose, onAdd}) => {
-    const [name, setName] = useState('');
-    const [color, setColor] = useState(COLORS[0]);
-
-    useEffect(() => {
-        if (isOpen) {
-            setName('');
-            setColor(COLORS[0]);
-        }
-    }, [isOpen]);
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onAdd(name, color);
-    }
-
-    return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Add New Calendar">
-            <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="flex items-center gap-3">
-                    <i className="fa-solid fa-pen-nib w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
-                    <div className="flex-grow">
-                        <input id="calName" type="text" placeholder="Calendar Name (Required)" value={name} onChange={e => setName(e.target.value)} className="form-input" required />
-                    </div>
-                </div>
-                <div className="flex items-start gap-3">
-                    <i className="fa-solid fa-palette w-6 text-center text-lg pt-1" style={{color: 'var(--text-secondary)'}}></i>
-                    <div className="flex-grow">
-                        <div className="grid grid-cols-7 gap-2">
-                            {COLORS.map(c => (
-                                <button type="button" key={c} onClick={() => setColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${color === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
-                            ))}
-                        </div>
-                    </div>
-                </div>
-                <button type="submit" className="w-full btn btn-primary"><i className="fa-solid fa-plus text-lg"></i></button>
-            </form>
-        </Modal>
-    )
-}
-
+// --- Manage Calendar Modals ---
 interface ManageCalendarModalProps {
     isOpen: boolean;
     onClose: () => void;

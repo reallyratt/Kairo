@@ -22,7 +22,7 @@ const NavItem: React.FC<{ to: string; icon: string; label: string }> = ({ to, ic
       })}
     >
       {({ isActive }) => (
-        <div className={`${baseClasses} ${isActive ? '' : 'hover:text-fuchsia-300'}`}>
+        <div className={`${baseClasses} ${isActive ? '' : 'hover:text-[var(--accent-primary)]'}`}>
           <i className={`fa-solid ${icon} text-2xl`}></i>
         </div>
       )}

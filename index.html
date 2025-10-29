@@ -35,6 +35,7 @@
           --text-inverted: #020617;
           --border-color: #334155; /* slate-700 */
           --accent-primary: #d946ef; /* fuchsia-500 */
+          --accent-primary-rgb: 217, 70, 239;
           --accent-secondary: #e879f9; /* fuchsia-400 */
           --accent-text: #f8fafc; /* slate-50 */
           --danger-primary: #f87171; /* red-400 */
@@ -56,6 +57,7 @@
           --text-inverted: #f8fafc;
           --border-color: #e2e8f0; /* slate-200 */
           --accent-primary: #c026d3; /* fuchsia-600 */
+          --accent-primary-rgb: 192, 38, 211;
           --accent-secondary: #d946ef; /* fuchsia-500 */
           --accent-text: #f8fafc;
           --danger-primary: #dc2626; /* red-600 */
@@ -66,25 +68,26 @@
           --font-family: 'system-ui', 'sans-serif';
       }
 
-      body[data-theme='cute'] {
-          --bg-primary: #fdf2f8; /* pink-50 */
-          --bg-secondary: #ffffff;
-          --bg-tertiary: #fae8ff; /* fuchsia-100 */
-          --bg-quaternary: #f5d0fe; /* fuchsia-200 */
-          --text-primary: #581c87; /* purple-900 */
-          --text-secondary: #7e22ce; /* purple-700 */
-          --text-tertiary: #a855f7; /* purple-500 */
-          --text-inverted: #ffffff;
-          --border-color: #e9d5ff; /* purple-200 */
-          --accent-primary: #f472b6; /* pink-400 */
-          --accent-secondary: #fb7185; /* rose-400 */
-          --accent-text: #ffffff;
-          --danger-primary: #f43f5e; /* rose-500 */
-          --danger-secondary-bg: rgba(244, 63, 94, 0.1);
-          --danger-tertiary-bg: rgba(244, 63, 94, 0.2);
-          --success-primary: #34d399; /* emerald-400 */
-          --shadow-color: 217 70 239 / 0.1;
-          --font-family: 'Comic Sans MS', 'Chalkboard SE', 'Marker Felt', cursive;
+      body[data-theme='default'] {
+          --bg-primary: #141B2D;       /* Deep Space */
+          --bg-secondary: #1E2A47;     /* Midnight Blue */
+          --bg-tertiary: #2F3A56;      /* Graphite Gray */
+          --bg-quaternary: #404a69;    /* Lighter Graphite for hover */
+          --text-primary: #E8EAF0;      /* Mist White */
+          --text-secondary: #A0A6B8;    /* Cloud Gray */
+          --text-tertiary: #7a8194;     /* Darker Cloud Gray */
+          --text-inverted: #141B2D;
+          --border-color: #2F3A56;      /* Graphite Gray */
+          --accent-primary: #3DD6D0;    /* Electric Cyan */
+          --accent-primary-rgb: 61, 214, 208;
+          --accent-secondary: #5ef8f2;   /* Lighter Cyan */
+          --accent-text: #141B2D;
+          --danger-primary: #E74C3C;    /* Crimson Pulse */
+          --danger-secondary-bg: rgba(231, 76, 60, 0.1);
+          --danger-tertiary-bg: rgba(231, 76, 60, 0.2);
+          --success-primary: #4ADE80;    /* Seafoam Green */
+          --shadow-color: 61 214 208 / 0.1;
+          --font-family: 'system-ui', 'sans-serif';
       }
 
       body[data-theme='monochrome'] {
@@ -98,6 +101,7 @@
           --text-inverted: #111111;
           --border-color: #3c3c3c;
           --accent-primary: #e5e5e5;
+          --accent-primary-rgb: 229, 229, 229;
           --accent-secondary: #fafafa;
           --accent-text: #111111;
           --danger-primary: #fca5a5;

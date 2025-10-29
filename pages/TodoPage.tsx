@@ -11,16 +11,19 @@ import Modal from '../components/Modal';
 
 // Urgency Tag Component
 const UrgencyTag: React.FC<{ urgency: Urgency }> = ({ urgency }) => {
-  const styles = {
-    [Urgency.Low]: 'bg-cyan-500/20 text-cyan-400',
-    [Urgency.Medium]: 'bg-yellow-500/20 text-yellow-400',
-    [Urgency.High]: 'bg-red-500/20 text-red-400',
-  };
-  return (
-    <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${styles[urgency]}`}>
-      {urgency.charAt(0).toUpperCase() + urgency.slice(1)}
-    </span>
-  );
+    const styles = {
+        [Urgency.Low]: { backgroundColor: 'rgba(85, 105, 192, 0.2)', color: '#5569C0' }, // Slate Blue
+        [Urgency.Medium]: { backgroundColor: 'rgba(245, 166, 35, 0.2)', color: '#F5A623' }, // Amber Glow
+        [Urgency.High]: { backgroundColor: 'rgba(231, 76, 60, 0.2)', color: '#E74C3C' }, // Crimson Pulse
+    };
+    return (
+        <span 
+        className="px-2 py-0.5 text-xs font-semibold rounded-full"
+        style={styles[urgency]}
+        >
+        {urgency.charAt(0).toUpperCase() + urgency.slice(1)}
+        </span>
+    );
 };
 
 // Task Item Component
