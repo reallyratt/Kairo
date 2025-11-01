@@ -15,10 +15,12 @@ interface TaskFormModalProps {
 }
 
 const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
-  const { events, calendars, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
+  const { events, calendars, calendarCategories, calendarOrder, calendarCategoryOrder, tasks } = useAppContext();
   const [formData, setFormData] = useState<Partial<TTask>>({});
-  const [syncCalendarId, setSyncCalendarId] = useState<string | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  
+  const [linkType, setLinkType] = useState<'none' | 'group' | 'event'>('none');
+  const [syncCalendarId, setSyncCalendarId] = useState<string | null>(null);
   const [eventPickerDate, setEventPickerDate] = useState<string>(toYYYYMMDD(new Date()));
 
   const isEditing = !!initialData?.id;
@@ -33,6 +35,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
         urgency: undefined,
         color: calendarColor || COLORS[0],
         eventId: undefined,
+        taskGroup: undefined,
         ...initialData
       };
       setFormData(data);
@@ -40,6 +43,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
       const eventForTask = data.eventId ? events.find(e => e.id === data.eventId) : null;
       setSyncCalendarId(eventForTask ? eventForTask.calendarId : null);
       setEventPickerDate(eventForTask ? eventForTask.date : data.dueDate || toYYYYMMDD(new Date()));
+      setLinkType(data.eventId ? 'event' : data.taskGroup ? 'group' : 'none');
       setShowConfirmDelete(false);
     }
   }, [isOpen, initialData, calendars, events]);
@@ -51,7 +55,18 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name?.trim()) return;
-    onSave(formData);
+
+    const finalData = { ...formData };
+    if (linkType === 'event') {
+      finalData.taskGroup = undefined;
+    } else if (linkType === 'group') {
+      finalData.eventId = undefined;
+    } else {
+      finalData.taskGroup = undefined;
+      finalData.eventId = undefined;
+    }
+
+    onSave(finalData);
   };
   
   const handleConfirmDelete = () => {
@@ -115,6 +130,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
         ...calendarEvents.map(e => ({ value: e.id, label: e.name }))
     ];
 
+  const existingTaskGroups = useMemo(() => [...new Set(tasks.map(t => t.taskGroup).filter(Boolean))], [tasks]);
 
   const urgencyOptions = [
     { value: 'none', label: 'No Urgency' },
@@ -123,9 +139,15 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
     { value: Urgency.High, label: 'High' },
   ];
 
+  const linkTypeOptions = [
+    { value: 'none', label: 'No Grouping' },
+    { value: 'group', label: 'Group by Task' },
+    { value: 'event', label: 'Link to Event' }
+  ];
+
   return (
     <>
-      <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit Task' : 'Create New Task'}>
+      <Modal isOpen={isOpen} onClose={onClose} title={isEditing ? 'Edit Task' : 'New Task'}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex items-center gap-3">
               <i className="fa-solid fa-pen-nib w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
@@ -156,6 +178,32 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
           <div className="flex items-center gap-3">
             <i className="fa-solid fa-link w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
             <div className="flex-grow">
+              <CustomSelect
+                options={linkTypeOptions}
+                value={linkType}
+                onChange={v => setLinkType(v as 'none' | 'group' | 'event')}
+              />
+            </div>
+          </div>
+          
+          {linkType === 'group' && (
+             <div className="pl-9 space-y-2 animate-view-in">
+                <input 
+                    type="text"
+                    placeholder="Task Group (e.g., Housework)"
+                    value={formData.taskGroup || ''}
+                    onChange={e => handleChange('taskGroup', e.target.value)}
+                    list="task-groups"
+                    className="form-input"
+                />
+                <datalist id="task-groups">
+                    {existingTaskGroups.map(group => <option key={group} value={group} />)}
+                </datalist>
+             </div>
+          )}
+
+          {linkType === 'event' && (
+            <div className="pl-9 space-y-2 animate-view-in">
               <CustomSelect 
                 options={[{value: 'none', label: 'No Calendar Sync'}, ...syncCalendarOptions]} 
                 value={syncCalendarId || 'none'} 
@@ -167,35 +215,30 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
                     }
                 }}
               />
-            </div>
-          </div>
-
-          {syncCalendarId && (
-            <div className="pl-9 space-y-2">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="eventPickerDate" className="text-xs" style={{color: 'var(--text-tertiary)'}}>Event Date</label>
-                  <input
-                    id="eventPickerDate"
-                    type="date"
-                    title="Event Date"
-                    value={eventPickerDate}
-                    onChange={e => setEventPickerDate(e.target.value)}
-                    className="form-input"
-                  />
+              {syncCalendarId && (
+                 <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="eventPickerDate" className="flex-shrink-0"><i className="fa-solid fa-calendar-day" style={{color: 'var(--text-tertiary)'}}></i></label>
+                    <input
+                      id="eventPickerDate"
+                      type="date"
+                      title="Event Date"
+                      value={eventPickerDate}
+                      onChange={e => setEventPickerDate(e.target.value)}
+                      className="form-input w-full"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="flex-shrink-0"><i className="fa-solid fa-calendar-check" style={{color: 'var(--text-tertiary)'}}></i></label>
+                    <CustomSelect
+                      options={eventOptions}
+                      value={formData.eventId || 'none'}
+                      onChange={(v) => handleChange('eventId', v === 'none' ? undefined : v)}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs" style={{color: 'var(--text-tertiary)'}}>Select Event</label>
-                  <CustomSelect
-                    options={eventOptions}
-                    value={formData.eventId || 'none'}
-                    onChange={(v) => handleChange('eventId', v === 'none' ? undefined : v)}
-                  />
-                </div>
-              </div>
-              <p className="text-xs mt-1" style={{color: 'var(--text-tertiary)'}}>
-                Select a date to find and link an event. This won't change the task's due date.
-              </p>
+              )}
             </div>
           )}
 
@@ -209,28 +252,21 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
               </div>
             </div>
           </div>
-
           <div className="flex gap-2 pt-2">
             {isEditing && (
-              <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>
+                <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>
             )}
-            <button type="submit" disabled={!formData.name?.trim()} className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
+            <button type="submit" className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
           </div>
         </form>
       </Modal>
-
       <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title="Are you sure?">
-        <div className="text-center">
-            <p className="mb-4" style={{color: 'var(--text-secondary)'}}>This action will permanently delete this task and cannot be undone.</p>
-            <div className="pt-2">
-                <button 
-                    onClick={handleConfirmDelete}
-                    className="w-full btn btn-danger"
-                >
-                    Yes
-                </button>
-            </div>
-        </div>
+          <div className="text-center">
+              <p className="mb-4" style={{color: 'var(--text-secondary)'}}>This action will permanently delete this task and cannot be undone.</p>
+              <div className="pt-2">
+                  <button onClick={handleConfirmDelete} className="w-full btn btn-danger">Yes</button>
+              </div>
+          </div>
       </Modal>
     </>
   );

@@ -23,7 +23,7 @@ interface EventFormModalProps {
 const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData, activeCalendarId }) => {
   type View = 'form' | 'confirm_delete' | 'confirm_close' | 'confirm_save';
   const { calendars, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
-  const { lang } = useTranslation();
+  const { t, lang } = useTranslation();
   const [formData, setFormData] = useState<Partial<TEvent>>({});
   const [repetition, setRepetition] = useState<RepetitionType>('none');
   const [view, setView] = useState<View>('form');
@@ -162,7 +162,7 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
         case 'confirm_close': return 'Unsaved Changes';
         case 'confirm_save': return 'Save Recurring Event';
         case 'form':
-        default: return isEditing ? 'Edit Event' : 'Create New Event';
+        default: return isEditing ? 'Edit Event' : t('calendar.createEvent');
     }
   }
 
@@ -363,7 +363,11 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
     const [newCalendarColor, setNewCalendarColor] = useState(COLORS[0]);
     const [calendarNameError, setCalendarNameError] = useState('');
     const [isAddingCalendar, setIsAddingCalendar] = useState(false);
+    const [isAddingCategory, setIsAddingCategory] = useState(false);
     
+    const [isAddMenuOpen, setIsAddMenuOpen] = useState(false);
+    const addMenuRef = useRef<HTMLDivElement>(null);
+
     // Build the unified list for management
     useEffect(() => {
         if (!isOpen) return;
@@ -375,6 +379,8 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
         setNewCalendarColor(COLORS[0]);
         setCalendarNameError('');
         setIsAddingCalendar(false);
+        setIsAddingCategory(false);
+        setIsAddMenuOpen(false);
 
         const finalRenderList: ManagedItem[] = [];
         const calendarMap = new Map(calendars.map(c => [c.id, c]));
@@ -416,6 +422,20 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
 
         setManagedItems(finalRenderList);
     }, [isOpen, calendars, calendarCategories, calendarOrder, calendarCategoryOrder]);
+    
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+          if (addMenuRef.current && !addMenuRef.current.contains(event.target as Node)) {
+            setIsAddMenuOpen(false);
+          }
+        }
+        if (isAddMenuOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+          document.removeEventListener("mousedown", handleClickOutside);
+        };
+      }, [addMenuRef, isAddMenuOpen]);
 
     const updateGlobalState = (items: ManagedItem[]) => {
         const newCalendarOrder: string[] = [];
@@ -452,6 +472,7 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
             setCalendarCategoryOrder(prev => [newCat.id, ...prev]);
             setNewCategoryName('');
             setCategoryError('');
+            setIsAddingCategory(false);
         } else {
             setCategoryError('Category name cannot be empty.');
         }
@@ -569,20 +590,36 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
     };
     
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Manage">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('calendar.manageModalTitle')}>
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 rounded-lg">
-                <form onSubmit={handleAddCategory} className="flex gap-2">
-                    <div className="flex-grow relative flex items-center">
-                        <i className="fa-solid fa-folder-plus absolute left-3 text-lg pointer-events-none" style={{color: 'var(--text-tertiary)'}}></i>
-                        <input type="text" placeholder={t('calendar.newCategoryPlaceholder')} value={newCategoryName} onChange={e => { setNewCategoryName(e.target.value); if(categoryError) setCategoryError(''); }} className="form-input flex-grow pl-10" />
+                <div className="relative">
+                    <button onClick={() => setIsAddMenuOpen(p => !p)} className="w-full btn btn-secondary flex items-center justify-center gap-2">
+                        <i className="fa-solid fa-plus"></i>
+                        Add New...
+                    </button>
+                    {isAddMenuOpen && (
+                        <div ref={addMenuRef} className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl py-1 z-30 animate-dropdown-in" style={{ backgroundColor: 'var(--bg-quaternary)' }}>
+                            <button onClick={() => { setIsAddingCategory(true); setIsAddingCalendar(false); setIsAddMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-[rgba(var(--accent-primary-rgb),0.2)]" style={{color: 'var(--text-primary)'}}>Add Category</button>
+                            <button onClick={() => { setIsAddingCalendar(true); setIsAddingCategory(false); setIsAddMenuOpen(false); }} className="w-full text-left px-4 py-2 text-sm hover:bg-[rgba(var(--accent-primary-rgb),0.2)]" style={{color: 'var(--text-primary)'}}>Add Calendar</button>
+                        </div>
+                    )}
+                </div>
+
+                {isAddingCategory && (
+                    <div className="animate-view-in p-3 rounded-lg" style={{backgroundColor: 'var(--bg-tertiary)'}}>
+                        <form onSubmit={handleAddCategory} className="flex gap-2">
+                            <div className="flex-grow relative flex items-center">
+                                <i className="fa-solid fa-folder-plus absolute left-3 text-lg pointer-events-none" style={{color: 'var(--text-tertiary)'}}></i>
+                                <input type="text" placeholder={t('calendar.newCategoryPlaceholder')} value={newCategoryName} onChange={e => { setNewCategoryName(e.target.value); if(categoryError) setCategoryError(''); }} className="form-input flex-grow pl-10" autoFocus />
+                            </div>
+                            <button type="submit" className="btn btn-primary btn-icon flex-shrink-0" aria-label="Add Category"><i className="fa-solid fa-plus"></i></button>
+                        </form>
+                        {categoryError && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{categoryError}</p>}
                     </div>
-                    <button type="submit" className="btn btn-primary btn-icon flex-shrink-0" aria-label="Add Category"><i className="fa-solid fa-plus"></i></button>
-                </form>
-                {categoryError && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{categoryError}</p>}
+                )}
 
-                <div className="w-full h-px my-4" style={{backgroundColor: 'var(--border-color)'}}></div>
 
-                {isAddingCalendar ? (
+                {isAddingCalendar && (
                     <div className="animate-view-in p-3 rounded-lg" style={{backgroundColor: 'var(--bg-tertiary)'}}>
                         <form onSubmit={handleAddNewCalendar} className="space-y-3">
                             <div>
@@ -613,19 +650,10 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
                             </div>
                         </form>
                     </div>
-                ) : (
-                    <button onClick={() => setIsAddingCalendar(true)} className="w-full btn btn-secondary flex items-center justify-center gap-2">
-                        <i className="fa-solid fa-plus"></i>
-                        {t('calendar.addCalendar')}
-                    </button>
                 )}
 
-
-                <div className="w-full h-px my-4" style={{backgroundColor: 'var(--border-color)'}}></div>
-
-
-                <p className="text-xs" style={{color: 'var(--text-secondary)'}}>{t('calendar.dragAndDropHint')}</p>
-
+                <div className="w-full h-px my-2" style={{backgroundColor: 'var(--border-color)'}}></div>
+                
                 <div className="space-y-2">
                     {managedItems.map((item, index) => {
                         if (item.type === 'category') {
@@ -960,15 +988,14 @@ function CalendarPage() {
 
   return (
     <div className="pb-10">
+      <div className="px-4 pt-2 flex items-center gap-2">
+          <CustomSelect options={calendarOptions} value={selectedCalendarId} onChange={setSelectedCalendarId} className="flex-grow" />
+          <button onClick={() => selectedCalendarId === 'overview' ? setIsManageOverviewOpen(true) : setIsManageModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-gear"></i></button>
+      </div>
+
       <div className="px-4 pt-4 space-y-6">
           {/* --- Calendar Box --- */}
           <div className="rounded-2xl p-4 shadow-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
-              {/* --- Calendar Selection Bar --- */}
-              <div className="flex items-center gap-2 mb-4">
-                  <CustomSelect options={calendarOptions} value={selectedCalendarId} onChange={setSelectedCalendarId} className="flex-grow" />
-                  <button onClick={() => selectedCalendarId === 'overview' ? setIsManageOverviewOpen(true) : setIsManageModalOpen(true)} className="btn btn-secondary btn-icon flex-shrink-0"><i className="fa-solid fa-gear"></i></button>
-              </div>
-
               {/* --- Calendar View --- */}
               <div>
                   <div className="flex justify-between items-center mb-4">
@@ -1105,7 +1132,7 @@ const ManageCalendarModal: React.FC<ManageCalendarModalProps> = ({ isOpen, onClo
     };
     
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Are you sure?" : t('calendar.manage')}>
+        <Modal isOpen={isOpen} onClose={onClose} title={showConfirmDelete ? "Are you sure?" : t('calendar.manageModalTitle')}>
             {showConfirmDelete ? (
                 <div className="space-y-4 text-center">
                     <p style={{color: 'var(--text-secondary)'}}>
@@ -1135,7 +1162,7 @@ const ManageCalendarModal: React.FC<ManageCalendarModalProps> = ({ isOpen, onClo
                     </div>
                     <div className="flex gap-2 pt-2">
                         <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label={t('common.delete')}><i className="fa-solid fa-trash"></i></button>
-                        <button type="submit" className="flex-grow btn btn-primary">{t('common.save')}</button>
+                        <button type="submit" className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
                     </div>
                 </form>
             )}

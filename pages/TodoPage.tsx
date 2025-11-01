@@ -1,5 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { useAppContext } from '../context/AppContext';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useAppContext, useTranslation } from '../context/AppContext';
 import { TTask, TEvent, Urgency, TCalendar, TCalendarCategory } from '../types';
 import { dateFromYYYYMMDD } from '../utils';
 import TaskFormModal from '../components/TaskFormModal';
@@ -79,6 +79,23 @@ function TodoPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<TTask | null>(null);
   const [isClearConfirmOpen, setIsClearConfirmOpen] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+  const { t } = useTranslation();
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
+        setIsSortMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [sortMenuRef]);
 
   useEffect(() => {
     if (activeAction === 'todo') {
@@ -148,6 +165,18 @@ function TodoPage() {
     setIsClearConfirmOpen(false);
   };
 
+  const toggleCollapse = (id: string) => {
+    setCollapsedSections(prev => {
+        const newSet = new Set(prev);
+        if (newSet.has(id)) {
+            newSet.delete(id);
+        } else {
+            newSet.add(id);
+        }
+        return newSet;
+    });
+  };
+
   const visibleTasks = useMemo(() => {
     if (selectedCalendarId === 'overview') return tasks;
     return tasks.filter(t => t.calendarId === selectedCalendarId);
@@ -193,15 +222,16 @@ function TodoPage() {
     return [...checkedTasks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [checkedTasks]);
 
-  const groupAndSortTasks = (tasksToProcess: TTask[]): { id: string; event: TEvent | null; tasks: TTask[] }[] => {
-    type TaskGroup = { id: string; event: TEvent | null; tasks: TTask[] };
+  const groupAndSortTasks = (tasksToProcess: TTask[]): { id: string; event: TEvent | null; taskGroup: string | null; tasks: TTask[] }[] => {
+    type TaskGroup = { id: string; event: TEvent | null; taskGroup: string | null; tasks: TTask[] };
     const groups: { [key: string]: TaskGroup } = {};
 
     tasksToProcess.forEach(task => {
-        const groupId = task.eventId || 'general';
+        const groupId = task.eventId || (task.taskGroup ? `group-${task.taskGroup}` : 'general');
         if (!groups[groupId]) {
             const event = task.eventId ? events.find(e => e.id === task.eventId) || null : null;
-            groups[groupId] = { id: groupId, event, tasks: [] };
+            const isTaskGroup = !task.eventId && task.taskGroup;
+            groups[groupId] = { id: groupId, event, tasks: [], taskGroup: isTaskGroup ? task.taskGroup : null };
         }
         groups[groupId].tasks.push(task);
     });
@@ -261,34 +291,40 @@ function TodoPage() {
   }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
   
   const sortOptions = [
-    { value: 'default', label: 'Default Grouping' },
-    { value: 'date', label: 'Sort by Due Date' },
-    { value: 'alpha', label: 'Sort by Name (A-Z)' },
-    { value: 'urgency', label: 'Sort by Urgency' },
-    { value: 'modified', label: 'Sort by Last Modified' },
-    { value: 'created', label: 'Sort by Date Created' },
+    { value: 'default', label: t('todo.defaultGrouping') },
+    { value: 'date', label: t('todo.sortByDate') },
+    { value: 'alpha', label: t('todo.sortByName') },
+    { value: 'urgency', label: t('todo.sortByUrgency') },
+    { value: 'modified', label: t('todo.sortByModified') },
+    { value: 'created', label: t('todo.sortByCreated') },
   ];
 
-  const renderTaskGroups = (groups: { id: string; event: TEvent | null; tasks: TTask[] }[]) => (
-    groups.map(({ id, event, tasks: groupTasks }) => {
+  const renderTaskGroups = (groups: { id: string; event: TEvent | null; taskGroup: string | null; tasks: TTask[] }[]) => (
+    groups.map(({ id, event, taskGroup, tasks: groupTasks }) => {
         if (groupTasks.length === 0) return null;
-        const isGeneralGroup = id === 'general';
-        let headerColor = 'var(--text-primary)';
-        let headerText = 'General Tasks';
+        
+        const isCollapsed = collapsedSections.has(id);
 
-        if (!isGeneralGroup) {
-            headerText = event?.name || 'Linked Tasks';
-            if (event) {
-                headerColor = selectedCalendarId === 'overview' ? (calendars.find(c => c.id === event.calendarId)?.color || event.color) : event.color;
-            } else {
-                headerColor = 'var(--text-tertiary)';
-            }
+        let headerColor = 'var(--text-primary)';
+        let headerText = t('todo.generalTasks');
+
+        if (event) {
+            headerText = event.name || t('todo.linkedTasks');
+            headerColor = selectedCalendarId === 'overview' ? (calendars.find(c => c.id === event.calendarId)?.color || event.color) : event.color;
+        } else if (taskGroup) {
+            headerText = taskGroup;
         }
+
         return (
             <div key={id} className="rounded-xl p-4" style={{backgroundColor: 'var(--bg-secondary)'}}>
-                <h3 className="text-lg font-bold mb-2" style={{ color: headerColor }}>{headerText}</h3>
-                <div className="space-y-1">
-                    {groupTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
+                <button onClick={() => toggleCollapse(id)} className="w-full flex justify-between items-center text-left">
+                  <h3 className="text-lg font-bold" style={{ color: headerColor }}>{headerText}</h3>
+                  <i className={`fa-solid fa-chevron-down transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`} style={{color: 'var(--text-tertiary)'}}></i>
+                </button>
+                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 pt-0' : 'max-h-screen pt-2'}`}>
+                  <div className="space-y-1">
+                      {groupTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
+                  </div>
                 </div>
             </div>
         );
@@ -298,32 +334,57 @@ function TodoPage() {
 
   return (
     <div className="pb-20">
+      <div className="px-4 pt-2 flex items-center gap-2">
+          <CustomSelect 
+              options={calendarOptions}
+              value={selectedCalendarId}
+              onChange={setSelectedCalendarId}
+              className="flex-grow"
+          />
+          <div className="relative" ref={sortMenuRef}>
+            <button onClick={() => setIsSortMenuOpen(prev => !prev)} className="btn btn-secondary btn-icon">
+              <i className="fa-solid fa-sort"></i>
+            </button>
+            {isSortMenuOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl py-1 z-30 animate-dropdown-in" style={{ backgroundColor: 'var(--bg-quaternary)' }}>
+                {sortOptions.map(opt => (
+                  <button 
+                    key={opt.value} 
+                    onClick={() => { setSortBy(opt.value as SortType); setIsSortMenuOpen(false); }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-[rgba(var(--accent-primary-rgb),0.2)]"
+                    style={{color: sortBy === opt.value ? 'var(--accent-primary)' : 'var(--text-primary)'}}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+      </div>
+
       <div className="p-4 space-y-4">
-        <div className="grid grid-cols-2 gap-2">
-            <CustomSelect 
-                options={calendarOptions}
-                value={selectedCalendarId}
-                onChange={setSelectedCalendarId}
-            />
-             <CustomSelect
-                options={sortOptions}
-                value={sortBy}
-                onChange={(v) => setSortBy(v as SortType)}
-            />
-        </div>
-        
         <div className="space-y-4">
-            {uncheckedTasks.length > 0 && <h2 className="text-xl font-bold" style={{color: 'var(--accent-primary)'}}>Pending</h2>}
-            {uncheckedTasks.length === 0 ? (
-                <div className="text-center py-10 rounded-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
-                    <i className="fa-solid fa-check-double text-4xl mb-3" style={{color: 'var(--text-tertiary)'}}></i>
-                </div>
-            ) : sortBy === 'default' ? (
-                 renderTaskGroups(groupedUncheckedTasks)
-            ) : (
-                <div className="rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
-                    {sortedUncheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
-                </div>
+            {uncheckedTasks.length > 0 && (
+              <button onClick={() => toggleCollapse('pending')} className="w-full flex justify-between items-center text-left">
+                <h2 className="text-xl font-bold" style={{color: 'var(--accent-primary)'}}>{t('todo.pending')}</h2>
+                <i className={`fa-solid fa-chevron-down transition-transform duration-200 ${collapsedSections.has('pending') ? 'rotate-180' : ''}`} style={{color: 'var(--text-tertiary)'}}></i>
+              </button>
+            )}
+
+            {!collapsedSections.has('pending') && (
+              <>
+                {uncheckedTasks.length === 0 ? (
+                    <div className="text-center py-10 rounded-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                        <i className="fa-solid fa-check-double text-4xl mb-3" style={{color: 'var(--text-tertiary)'}}></i>
+                    </div>
+                ) : sortBy === 'default' ? (
+                    renderTaskGroups(groupedUncheckedTasks)
+                ) : (
+                    <div className="rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                        {sortedUncheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
+                    </div>
+                )}
+              </>
             )}
         </div>
 
@@ -331,14 +392,21 @@ function TodoPage() {
             <div className="space-y-4">
                  <div className="w-full h-px my-4" style={{backgroundColor: 'var(--border-color)'}}></div>
                 <div className="flex justify-between items-center">
-                    <h2 className="text-xl font-bold" style={{color: 'var(--accent-primary)'}}>Completed ({checkedTasks.length})</h2>
-                    <button onClick={() => setIsClearConfirmOpen(true)} className="btn btn-danger btn-icon" aria-label="Clear completed tasks">
-                        <i className="fa-solid fa-broom"></i>
+                    <button onClick={() => toggleCollapse('completed')} className="w-full flex justify-between items-center text-left">
+                      <h2 className="text-xl font-bold" style={{color: 'var(--accent-primary)'}}>{t('todo.completed', { count: checkedTasks.length })}</h2>
+                      <div className="flex items-center gap-2">
+                          <button onClick={(e) => { e.stopPropagation(); setIsClearConfirmOpen(true); }} className="btn btn-danger btn-icon" aria-label={t('todo.clearCompleted')}>
+                              <i className="fa-solid fa-broom"></i>
+                          </button>
+                          <i className={`fa-solid fa-chevron-down transition-transform duration-200 ${collapsedSections.has('completed') ? 'rotate-180' : ''}`} style={{color: 'var(--text-tertiary)'}}></i>
+                      </div>
                     </button>
                 </div>
-                <div className="rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
-                    {sortedCheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
-                </div>
+                {!collapsedSections.has('completed') && (
+                  <div className="rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
+                      {sortedCheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
+                  </div>
+                )}
             </div>
         )}
       </div>

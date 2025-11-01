@@ -330,7 +330,7 @@ const HabitFormModal: React.FC<HabitFormModalProps> = ({ isOpen, onClose, onSave
                     </div>
                     <div className="flex gap-2 pt-2">
                         {isEditing && <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>}
-                        <button type="submit" className="flex-grow btn btn-primary">{isEditing ? 'Save Changes' : 'Save Habit'}</button>
+                        <button type="submit" className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
                     </div>
                 </form>
             )}

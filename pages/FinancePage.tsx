@@ -196,7 +196,7 @@ const TransactionFormModal: React.FC<{
                     </div>
                     <div className="flex gap-2 pt-2">
                         {isEditing && onDelete && <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>}
-                        <button type="submit" className="flex-grow btn btn-primary">{isEditing ? 'Save Changes' : 'Add Transaction'}</button>
+                        <button type="submit" className="flex-grow btn btn-primary">{isEditing ? <i className="fa-solid fa-check text-lg"></i> : 'Add Transaction'}</button>
                     </div>
                 </form>
             </Modal>
@@ -330,7 +330,7 @@ const ManageWalletModal: React.FC<{
                     </div>
                     <div className="flex gap-2 pt-2">
                         <button type="button" onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>
-                        <button type="submit" className="flex-grow btn btn-primary">Save Changes</button>
+                        <button type="submit" className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button>
                     </div>
                 </form>
             )}

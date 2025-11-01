@@ -54,6 +54,7 @@ export interface TTask {
   id:string;
   calendarId: string;
   eventId?: string;
+  taskGroup?: string;
   name: string;
   description?: string;
   color: string;

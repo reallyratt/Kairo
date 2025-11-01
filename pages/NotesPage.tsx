@@ -160,7 +160,7 @@ const DrawingModal: React.FC<{ isOpen: boolean, onClose: () => void, onSave: (da
     }, [draw]);
     const handleSave = () => { if(canvasRef.current) onSave(canvasRef.current.toDataURL('image/png')); onClose(); };
     const clearCanvas = () => { const canvas = canvasRef.current; if(!canvas) return; const ctx = canvas.getContext('2d'); if(ctx) ctx.clearRect(0, 0, canvas.width, canvas.height); };
-    return <Modal isOpen={isOpen} onClose={onClose} title={t('notes.drawingPadTitle')}><div className="space-y-3"><canvas ref={canvasRef} width="300" height="300" onMouseDown={startDrawing} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchEnd={stopDrawing} className="rounded-lg w-full" style={{backgroundColor: 'var(--bg-primary)', touchAction: 'none'}}></canvas><div className="flex items-center gap-2"><label className="text-sm">{t('notes.drawingPadColor')}</label><div className="flex gap-1.5">{['#FFFFFF', '#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#d946ef'].map(c => <button key={c} onClick={() => setPenColor(c)} className={`w-6 h-6 rounded-full ${penColor === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)'} as React.CSSProperties}></button>)}</div></div><div className="flex items-center gap-2"><label className="text-sm">{t('notes.drawingPadSize')}</label><input type="range" min="1" max="20" value={penSize} onChange={e => setPenSize(Number(e.target.value))} className="flex-grow" /></div><div className="flex gap-2"><button onClick={clearCanvas} className="btn btn-secondary flex-grow">{t('notes.drawingPadClear')}</button><button onClick={handleSave} className="btn btn-primary flex-grow">{t('notes.drawingPadSave')}</button></div></div></Modal>
+    return <Modal isOpen={isOpen} onClose={onClose} title={t('notes.drawingPadTitle')}><div className="space-y-3"><canvas ref={canvasRef} width="300" height="300" onMouseDown={startDrawing} onMouseUp={stopDrawing} onMouseLeave={stopDrawing} onTouchStart={startDrawing} onTouchEnd={stopDrawing} className="rounded-lg w-full" style={{backgroundColor: 'var(--bg-primary)', touchAction: 'none'}}></canvas><div className="flex items-center gap-2"><label className="text-sm">{t('notes.drawingPadColor')}</label><div className="flex gap-1.5">{['#FFFFFF', '#f87171', '#fb923c', '#facc15', '#4ade80', '#22d3ee', '#d946ef'].map(c => <button key={c} onClick={() => setPenColor(c)} className={`w-6 h-6 rounded-full ${penColor === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)'} as React.CSSProperties}></button>)}</div></div><div className="flex items-center gap-2"><label className="text-sm">{t('notes.drawingPadSize')}</label><input type="range" min="1" max="20" value={penSize} onChange={e => setPenSize(Number(e.target.value))} className="flex-grow" /></div><div className="flex gap-2"><button onClick={clearCanvas} className="btn btn-secondary flex-grow">{t('notes.drawingPadClear')}</button><button onClick={handleSave} className="btn btn-primary flex-grow"><i className="fa-solid fa-check text-lg"></i></button></div></div></Modal>
 };
 
 // --- Note Editor View ---
@@ -417,37 +417,35 @@ function NotesPage() {
   if (view === 'editor') return <NoteEditor noteToEdit={selectedNote} activeFolderId={selectedFolderId === 'all' ? 'uncategorized' : selectedFolderId} onSave={handleSaveNote} onCancel={() => { setView('list'); setSelectedNote(null); }} onDelete={handleDeleteNote} />;
 
   return (
-    <div>
-      <div className="p-4 space-y-4">
-        <div className="space-y-4">
-            <CustomSelect options={folderOptions} value={selectedFolderId} onChange={setSelectedFolderId} />
-            {availableTags.length > 0 && <MultiSelectDropdown options={tagOptions} selectedValues={selectedTagIds} onChange={setSelectedTagIds} placeholder={t('notes.filterTags')} />}
-        </div>
-        {filteredNotes.length === 0 ? (
-          <div className="text-center py-10 rounded-lg mt-4 flex justify-center items-center h-40" style={{backgroundColor: 'var(--bg-secondary)'}}><i className="fa-solid fa-book-open text-5xl" style={{color: 'var(--text-tertiary)'}}></i></div>
-        ) : (
-          <div className="space-y-3">
-            {filteredNotes.map(note => {
-              const folder = folders.find(f => f.id === note.folderId);
-              const noteThemeClass = note.noteTheme ? `note-theme-${note.noteTheme} note-themed` : '';
-              return (
-                <button key={note.id} onClick={() => { setSelectedNote(note); setView('editor'); }} className={`w-full text-left flex gap-3 p-3 rounded-lg transition-all duration-150 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] ${noteThemeClass}`} style={noteThemeClass ? {} : {backgroundColor: 'var(--bg-secondary)'}}>
-                  <div className="flex-grow overflow-hidden">
-                    <h3 className="font-bold truncate">{note.title}</h3>
-                    <p className="text-sm truncate mt-1" style={{color: noteThemeClass ? undefined : 'var(--text-secondary)'}}>{stripHtml(note.content)}</p>
-                    <div className="flex items-center gap-2 mt-2">
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{backgroundColor: noteThemeClass ? 'rgba(0,0,0,0.15)' : 'var(--bg-quaternary)', color: noteThemeClass ? undefined : 'var(--text-secondary)'}}><i className="fa-solid fa-folder"></i>{folder?.name || t('notes.uncategorized')}</span>
-                        <div className="flex flex-wrap gap-1">
-                          {note.tagIds.map(tagId => tags.find(t => t.id === tagId)).filter(Boolean).map(tag => <span key={tag!.id} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: noteThemeClass ? 'rgba(0,0,0,0.15)' : 'var(--bg-quaternary)', color: noteThemeClass ? undefined : 'var(--text-secondary)'}}>{tag!.name}</span>)}
-                        </div>
-                    </div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-        )}
+    <div className="p-4 space-y-4">
+      <div className="space-y-4">
+          <CustomSelect options={folderOptions} value={selectedFolderId} onChange={setSelectedFolderId} />
+          {availableTags.length > 0 && <MultiSelectDropdown options={tagOptions} selectedValues={selectedTagIds} onChange={setSelectedTagIds} placeholder={t('notes.filterTags')} />}
       </div>
+      {filteredNotes.length === 0 ? (
+        <div className="text-center py-10 rounded-lg mt-4 flex justify-center items-center h-40" style={{backgroundColor: 'var(--bg-secondary)'}}><i className="fa-solid fa-book-open text-5xl" style={{color: 'var(--text-tertiary)'}}></i></div>
+      ) : (
+        <div className="space-y-3">
+          {filteredNotes.map(note => {
+            const folder = folders.find(f => f.id === note.folderId);
+            const noteThemeClass = note.noteTheme ? `note-theme-${note.noteTheme} note-themed` : '';
+            return (
+              <button key={note.id} onClick={() => { setSelectedNote(note); setView('editor'); }} className={`w-full text-left flex gap-3 p-3 rounded-lg transition-all duration-150 hover:bg-[var(--bg-tertiary)] active:scale-[0.99] ${noteThemeClass}`} style={noteThemeClass ? {} : {backgroundColor: 'var(--bg-secondary)'}}>
+                <div className="flex-grow overflow-hidden">
+                  <h3 className="font-bold truncate">{note.title}</h3>
+                  <p className="text-sm truncate mt-1" style={{color: noteThemeClass ? undefined : 'var(--text-secondary)'}}>{stripHtml(note.content)}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1.5" style={{backgroundColor: noteThemeClass ? 'rgba(0,0,0,0.15)' : 'var(--bg-quaternary)', color: noteThemeClass ? undefined : 'var(--text-secondary)'}}><i className="fa-solid fa-folder"></i>{folder?.name || t('notes.uncategorized')}</span>
+                      <div className="flex flex-wrap gap-1">
+                        {note.tagIds.map(tagId => tags.find(t => t.id === tagId)).filter(Boolean).map(tag => <span key={tag!.id} className="text-xs font-medium px-2 py-0.5 rounded-full" style={{backgroundColor: noteThemeClass ? 'rgba(0,0,0,0.15)' : 'var(--bg-quaternary)', color: noteThemeClass ? undefined : 'var(--text-secondary)'}}>{tag!.name}</span>)}
+                      </div>
+                  </div>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   );
 }
