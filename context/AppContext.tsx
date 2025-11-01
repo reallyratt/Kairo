@@ -1,7 +1,7 @@
 import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 // FIX: Import missing types for Habit and Finance features.
-import { TCalendar, TEvent, TTask, TNote, TTag, TCalendarCategory, TFolder, THabit, THabitCategory, THabitLog, TWallet, TTransaction, TFinanceCategory, TransactionType } from '../types';
+import { TCalendar, TEvent, TTask, TNote, TTag, TCalendarCategory, TFolder, THabit, THabitCategory, THabitLog, TWallet, TTransaction, TFinanceCategory, TransactionType, TTaskGroup } from '../types';
 import { DEFAULT_CALENDARS } from '../constants';
 
 // --- TYPES ---
@@ -17,6 +17,8 @@ interface AppContextType {
   setEvents: React.Dispatch<React.SetStateAction<TEvent[]>>;
   tasks: TTask[];
   setTasks: React.Dispatch<React.SetStateAction<TTask[]>>;
+  taskGroups: TTaskGroup[];
+  setTaskGroups: React.Dispatch<React.SetStateAction<TTaskGroup[]>>;
   notes: TNote[];
   setNotes: React.Dispatch<React.SetStateAction<TNote[]>>;
   tags: TTag[];
@@ -134,6 +136,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [calendars, setCalendars] = useLocalStorage<TCalendar[]>('kairo-calendars', DEFAULT_CALENDARS);
   const [events, setEvents] = useLocalStorage<TEvent[]>('kairo-events', []);
   const [tasks, setTasks] = useLocalStorage<TTask[]>('kairo-tasks', []);
+  const [taskGroups, setTaskGroups] = useLocalStorage<TTaskGroup[]>('kairo-task-groups', []);
   const [notes, setNotes] = useLocalStorage<TNote[]>('kairo-notes', []);
   const [tags, setTags] = useLocalStorage<TTag[]>('kairo-tags', []);
   const [folders, setFolders] = useLocalStorage<TFolder[]>('kairo-folders', [{id: 'uncategorized', name: 'Uncategorized'}]);
@@ -223,6 +226,42 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setTasks(migratedTasks);
     }
   }, [tasks, setTasks]);
+
+  useEffect(() => {
+    // This effect migrates tasks from a simple `taskGroup: string` to a structured `taskGroupId: string`.
+    const isMigrated = localStorage.getItem('kairo-task-group-migration-v1') === 'true';
+    if (!isMigrated && tasks.some(t => 'taskGroup' in t && typeof (t as any).taskGroup === 'string')) {
+        console.log("Migrating tasks to use task group IDs...");
+
+        const groupNameToIdMap = new Map<string, string>(taskGroups.map(g => [g.name.toLowerCase(), g.id]));
+        const newGroupsToCreate: TTaskGroup[] = [];
+
+        const migratedTasks = tasks.map(task => {
+            const oldTask = task as any;
+            if (oldTask.taskGroup && typeof oldTask.taskGroup === 'string') {
+                const groupName = oldTask.taskGroup;
+                let groupId = groupNameToIdMap.get(groupName.toLowerCase());
+
+                if (!groupId) {
+                    const newGroup: TTaskGroup = { id: Date.now().toString() + Math.random().toString(36).substr(2, 9), name: groupName };
+                    newGroupsToCreate.push(newGroup);
+                    groupId = newGroup.id;
+                    groupNameToIdMap.set(groupName.toLowerCase(), groupId);
+                }
+
+                const { taskGroup, ...restOfTask } = oldTask;
+                return { ...restOfTask, taskGroupId: groupId };
+            }
+            return task;
+        });
+        
+        if (newGroupsToCreate.length > 0) {
+            setTaskGroups(prev => [...prev, ...newGroupsToCreate]);
+        }
+        setTasks(migratedTasks as TTask[]);
+        localStorage.setItem('kairo-task-group-migration-v1', 'true');
+    }
+  }, [tasks, setTasks, taskGroups, setTaskGroups]);
   
   useEffect(() => {
     // This effect ensures calendarOrder is initialized and synchronized with the actual calendars.
@@ -269,6 +308,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     calendars, setCalendars,
     events, setEvents,
     tasks, setTasks,
+    taskGroups, setTaskGroups,
     notes, setNotes,
     tags, setTags,
     folders, setFolders,

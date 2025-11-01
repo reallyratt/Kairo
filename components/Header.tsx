@@ -41,11 +41,10 @@ function Header({ titleKey }: HeaderProps) {
 
   return (
     <header className="flex items-center justify-between h-16 px-4">
-      <h1 className="text-2xl font-bold tracking-wider" style={{ color: 'var(--accent-primary)'}}>{t(titleKey)}</h1>
+      <h1 className="text-xl font-bold tracking-wider" style={{ color: 'var(--accent-primary)'}}>{t(titleKey)}</h1>
       <div className="relative" ref={menuRef}>
-        <button onClick={() => setMenuOpen(!menuOpen)} className="p-2 rounded-full hover:bg-[var(--bg-quaternary)] transition-all transform hover:scale-110 active:scale-95" style={{ color: 'var(--text-secondary)',
-    backgroundColor: 'var(--bg-tertiary)'}}>
-          <i className="fa-solid fa-sliders text-lg"></i>
+        <button onClick={() => setMenuOpen(!menuOpen)} className="btn btn-secondary btn-icon">
+          <i className="fa-solid fa-sliders"></i>
         </button>
         {menuOpen && (
           <div className="absolute right-0 mt-2 w-48 rounded-lg shadow-xl py-1 z-50 transform origin-top-right animate-fade-in-down" style={{ backgroundColor: 'var(--bg-quaternary)' }}>

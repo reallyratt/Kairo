@@ -507,7 +507,6 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
         }
 
         // It's a category, find its calendars.
-        // The list is constructed so that a category is followed by its calendars.
         let end = index;
         for (let i = index + 1; i < managedItems.length; i++) {
             const currentItem = managedItems[i];

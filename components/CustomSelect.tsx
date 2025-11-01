@@ -84,7 +84,7 @@ const CustomSelect: React.FC<CustomSelectProps> = ({ options, value, onChange, c
         <i className={`fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200 ${isOpen && !isAnimatingOut ? 'transform rotate-180' : ''}`} style={{color: 'var(--text-tertiary)'}}></i>
       </button>
       {isOpen && (
-        <div className={`absolute z-10 mt-1 w-full bg-slate-700 rounded-lg shadow-lg max-h-60 overflow-auto ${animationClass}`} style={{backgroundColor: 'var(--bg-quaternary)'}}>
+        <div className={`absolute z-30 mt-1 w-full bg-slate-700 rounded-lg shadow-lg max-h-60 overflow-auto ${animationClass}`} style={{backgroundColor: 'var(--bg-quaternary)'}}>
           <ul>
             {/* FIX: Use a type guard to correctly narrow the union type for 'option'. This resolves errors where '.value' was accessed on a type that might be a header. */}
             {options.map((option, index) => {

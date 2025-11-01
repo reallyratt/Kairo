@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppContext, useTranslation } from '../context/AppContext';
-import { TTask, TEvent, Urgency, TCalendar, TCalendarCategory } from '../types';
+import { TTask, TEvent, Urgency, TCalendar, TCalendarCategory, TTaskGroup } from '../types';
 import { dateFromYYYYMMDD } from '../utils';
 import TaskFormModal from '../components/TaskFormModal';
 import CustomSelect from '../components/CustomSelect';
@@ -72,7 +72,7 @@ const TaskItem: React.FC<{ task: TTask; calendars: TCalendar[]; onToggle: (id: s
 // --- Main TodoPage Component ---
 
 function TodoPage() {
-  const { tasks, calendars, events, setTasks, activeAction, setActiveAction, calendarCategories, calendarOrder, calendarCategoryOrder } = useAppContext();
+  const { tasks, calendars, events, setTasks, activeAction, setActiveAction, calendarCategories, calendarOrder, calendarCategoryOrder, taskGroups } = useAppContext();
   const [selectedCalendarId, setSelectedCalendarId] = useState('overview');
   type SortType = 'default' | 'date' | 'alpha' | 'urgency' | 'modified' | 'created';
   const [sortBy, setSortBy] = useState<SortType>('default');
@@ -222,16 +222,16 @@ function TodoPage() {
     return [...checkedTasks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
   }, [checkedTasks]);
 
-  const groupAndSortTasks = (tasksToProcess: TTask[]): { id: string; event: TEvent | null; taskGroup: string | null; tasks: TTask[] }[] => {
-    type TaskGroup = { id: string; event: TEvent | null; taskGroup: string | null; tasks: TTask[] };
-    const groups: { [key: string]: TaskGroup } = {};
+  const groupAndSortTasks = (tasksToProcess: TTask[]): { id: string; event: TEvent | null; taskGroup: TTaskGroup | null; tasks: TTask[] }[] => {
+    type TaskGroupContainer = { id: string; event: TEvent | null; taskGroup: TTaskGroup | null; tasks: TTask[] };
+    const groups: { [key: string]: TaskGroupContainer } = {};
 
     tasksToProcess.forEach(task => {
-        const groupId = task.eventId || (task.taskGroup ? `group-${task.taskGroup}` : 'general');
+        const groupId = task.eventId || (task.taskGroupId ? `group-${task.taskGroupId}` : 'general');
         if (!groups[groupId]) {
             const event = task.eventId ? events.find(e => e.id === task.eventId) || null : null;
-            const isTaskGroup = !task.eventId && task.taskGroup;
-            groups[groupId] = { id: groupId, event, tasks: [], taskGroup: isTaskGroup ? task.taskGroup : null };
+            const taskGroup = task.taskGroupId ? taskGroups.find(tg => tg.id === task.taskGroupId) || null : null;
+            groups[groupId] = { id: groupId, event, tasks: [], taskGroup };
         }
         groups[groupId].tasks.push(task);
     });
@@ -246,7 +246,7 @@ function TodoPage() {
     return allGroupsAsArray;
   };
 
-  const groupedUncheckedTasks = useMemo(() => groupAndSortTasks(uncheckedTasks), [uncheckedTasks, events]);
+  const groupedUncheckedTasks = useMemo(() => groupAndSortTasks(uncheckedTasks), [uncheckedTasks, events, taskGroups]);
   
   const calendarOptions = useMemo(() => {
     const options: any[] = [{ value: 'overview', label: 'Overview', className: 'text-lg font-bold py-1' }];
@@ -299,7 +299,7 @@ function TodoPage() {
     { value: 'created', label: t('todo.sortByCreated') },
   ];
 
-  const renderTaskGroups = (groups: { id: string; event: TEvent | null; taskGroup: string | null; tasks: TTask[] }[]) => (
+  const renderTaskGroups = (groups: { id: string; event: TEvent | null; taskGroup: TTaskGroup | null; tasks: TTask[] }[]) => (
     groups.map(({ id, event, taskGroup, tasks: groupTasks }) => {
         if (groupTasks.length === 0) return null;
         
@@ -312,7 +312,7 @@ function TodoPage() {
             headerText = event.name || t('todo.linkedTasks');
             headerColor = selectedCalendarId === 'overview' ? (calendars.find(c => c.id === event.calendarId)?.color || event.color) : event.color;
         } else if (taskGroup) {
-            headerText = taskGroup;
+            headerText = taskGroup.name;
         }
 
         return (
@@ -321,7 +321,7 @@ function TodoPage() {
                   <h3 className="text-lg font-bold" style={{ color: headerColor }}>{headerText}</h3>
                   <i className={`fa-solid fa-chevron-down transition-transform duration-200 ${isCollapsed ? 'rotate-180' : ''}`} style={{color: 'var(--text-tertiary)'}}></i>
                 </button>
-                <div className={`transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 pt-0' : 'max-h-screen pt-2'}`}>
+                <div className={`transition-all duration-500 ease-in-out overflow-hidden ${isCollapsed ? 'max-h-0 opacity-0 pt-0' : 'max-h-screen opacity-100 pt-2'}`}>
                   <div className="space-y-1">
                       {groupTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
                   </div>
@@ -371,8 +371,7 @@ function TodoPage() {
               </button>
             )}
 
-            {!collapsedSections.has('pending') && (
-              <>
+            <div className={`transition-all duration-500 ease-in-out overflow-hidden ${collapsedSections.has('pending') ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
                 {uncheckedTasks.length === 0 ? (
                     <div className="text-center py-10 rounded-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
                         <i className="fa-solid fa-check-double text-4xl mb-3" style={{color: 'var(--text-tertiary)'}}></i>
@@ -384,8 +383,7 @@ function TodoPage() {
                         {sortedUncheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
                     </div>
                 )}
-              </>
-            )}
+            </div>
         </div>
 
         {sortedCheckedTasks.length > 0 && (
@@ -402,11 +400,11 @@ function TodoPage() {
                       </div>
                     </button>
                 </div>
-                {!collapsedSections.has('completed') && (
+                 <div className={`transition-all duration-500 ease-in-out overflow-hidden ${collapsedSections.has('completed') ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
                   <div className="rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
                       {sortedCheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
                   </div>
-                )}
+                </div>
             </div>
         )}
       </div>

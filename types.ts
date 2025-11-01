@@ -1,4 +1,5 @@
 
+
 export interface TFolder {
   id: string;
   name: string;
@@ -50,11 +51,16 @@ export enum Urgency {
   High = 'high',
 }
 
+export interface TTaskGroup {
+  id: string;
+  name: string;
+}
+
 export interface TTask {
   id:string;
   calendarId: string;
   eventId?: string;
-  taskGroup?: string;
+  taskGroupId?: string;
   name: string;
   description?: string;
   color: string;

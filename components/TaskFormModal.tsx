@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Modal from './Modal';
-import { TTask, Urgency, TCalendar, TCalendarCategory } from '../types';
+import { TTask, Urgency, TCalendar, TCalendarCategory, TTaskGroup } from '../types';
 import { useAppContext } from '../context/AppContext';
 import { COLORS } from '../constants';
 import CustomSelect from './CustomSelect';
@@ -15,13 +15,18 @@ interface TaskFormModalProps {
 }
 
 const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, onDelete, initialData }) => {
-  const { events, calendars, calendarCategories, calendarOrder, calendarCategoryOrder, tasks } = useAppContext();
+  const { events, calendars, calendarCategories, calendarOrder, calendarCategoryOrder, taskGroups, setTaskGroups } = useAppContext();
   const [formData, setFormData] = useState<Partial<TTask>>({});
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
   
   const [linkType, setLinkType] = useState<'none' | 'group' | 'event'>('none');
   const [syncCalendarId, setSyncCalendarId] = useState<string | null>(null);
   const [eventPickerDate, setEventPickerDate] = useState<string>(toYYYYMMDD(new Date()));
+
+  // New state for group combobox
+  const [groupNameInput, setGroupNameInput] = useState('');
+  const [isGroupDropdownOpen, setIsGroupDropdownOpen] = useState(false);
+  const groupInputRef = useRef<HTMLDivElement>(null);
 
   const isEditing = !!initialData?.id;
 
@@ -35,7 +40,7 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
         urgency: undefined,
         color: calendarColor || COLORS[0],
         eventId: undefined,
-        taskGroup: undefined,
+        taskGroupId: undefined,
         ...initialData
       };
       setFormData(data);
@@ -43,10 +48,28 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
       const eventForTask = data.eventId ? events.find(e => e.id === data.eventId) : null;
       setSyncCalendarId(eventForTask ? eventForTask.calendarId : null);
       setEventPickerDate(eventForTask ? eventForTask.date : data.dueDate || toYYYYMMDD(new Date()));
-      setLinkType(data.eventId ? 'event' : data.taskGroup ? 'group' : 'none');
+      
+      const groupForTask = data.taskGroupId ? taskGroups.find(tg => tg.id === data.taskGroupId) : null;
+      setGroupNameInput(groupForTask?.name || '');
+
+      setLinkType(data.eventId ? 'event' : data.taskGroupId ? 'group' : 'none');
       setShowConfirmDelete(false);
     }
-  }, [isOpen, initialData, calendars, events]);
+  }, [isOpen, initialData, calendars, events, taskGroups]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (groupInputRef.current && !groupInputRef.current.contains(event.target as Node)) {
+        setIsGroupDropdownOpen(false);
+      }
+    };
+    if (isGroupDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isGroupDropdownOpen]);
 
   const handleChange = (field: keyof Omit<TTask, 'id' | 'calendarId' | 'completed'>, value: string | undefined) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -56,16 +79,28 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
     e.preventDefault();
     if (!formData.name?.trim()) return;
 
-    const finalData = { ...formData };
-    if (linkType === 'event') {
-      finalData.taskGroup = undefined;
-    } else if (linkType === 'group') {
+    let finalData = { ...formData };
+    
+    if (linkType === 'group') {
       finalData.eventId = undefined;
+      const groupName = groupNameInput.trim();
+      if (groupName) {
+        let group = taskGroups.find(g => g.name.toLowerCase() === groupName.toLowerCase());
+        if (!group) {
+          const newGroup: TTaskGroup = { id: Date.now().toString(), name: groupName };
+          setTaskGroups(prev => [...prev, newGroup]);
+          group = newGroup;
+        }
+        finalData.taskGroupId = group.id;
+      } else {
+        finalData.taskGroupId = undefined;
+      }
+    } else if (linkType === 'event') {
+      finalData.taskGroupId = undefined;
     } else {
-      finalData.taskGroup = undefined;
+      finalData.taskGroupId = undefined;
       finalData.eventId = undefined;
     }
-
     onSave(finalData);
   };
   
@@ -75,6 +110,16 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
         setShowConfirmDelete(false);
     }
   }
+  
+  const handleGroupSelect = (groupName: string) => {
+    setGroupNameInput(groupName);
+    setIsGroupDropdownOpen(false);
+  };
+
+  const suggestedTaskGroups = useMemo(() => {
+    if (!groupNameInput) return taskGroups;
+    return taskGroups.filter(g => g.name.toLowerCase().includes(groupNameInput.toLowerCase()));
+  }, [groupNameInput, taskGroups]);
 
   const syncCalendarOptions = useMemo(() => {
     const options: any[] = [];
@@ -129,8 +174,6 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
         { value: 'none', label: 'No Event' },
         ...calendarEvents.map(e => ({ value: e.id, label: e.name }))
     ];
-
-  const existingTaskGroups = useMemo(() => [...new Set(tasks.map(t => t.taskGroup).filter(Boolean))], [tasks]);
 
   const urgencyOptions = [
     { value: 'none', label: 'No Urgency' },
@@ -188,17 +231,28 @@ const TaskFormModal: React.FC<TaskFormModalProps> = ({ isOpen, onClose, onSave, 
           
           {linkType === 'group' && (
              <div className="pl-9 space-y-2 animate-view-in">
-                <input 
-                    type="text"
-                    placeholder="Task Group (e.g., Housework)"
-                    value={formData.taskGroup || ''}
-                    onChange={e => handleChange('taskGroup', e.target.value)}
-                    list="task-groups"
-                    className="form-input"
-                />
-                <datalist id="task-groups">
-                    {existingTaskGroups.map(group => <option key={group} value={group} />)}
-                </datalist>
+                <div ref={groupInputRef} className="relative">
+                    <input
+                        type="text"
+                        placeholder="Select or create a group..."
+                        value={groupNameInput}
+                        onChange={e => { setGroupNameInput(e.target.value); setIsGroupDropdownOpen(true); }}
+                        onFocus={() => setIsGroupDropdownOpen(true)}
+                        className="form-input"
+                        autoComplete="off"
+                    />
+                    {isGroupDropdownOpen && suggestedTaskGroups.length > 0 && (
+                        <div className="absolute z-20 mt-1 w-full rounded-lg shadow-lg max-h-40 overflow-auto animate-dropdown-in" style={{backgroundColor: 'var(--bg-quaternary)'}}>
+                            <ul>
+                                {suggestedTaskGroups.map(group => (
+                                    <li key={group.id} onMouseDown={e => { e.preventDefault(); handleGroupSelect(group.name); }} className="px-4 py-2 cursor-pointer hover:bg-[rgba(var(--accent-primary-rgb),0.2)]">
+                                        {group.name}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </div>
              </div>
           )}
 
