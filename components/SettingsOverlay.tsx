@@ -38,8 +38,6 @@ const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose }) =>
   const themeOptions: { id: Theme; labelKey: string; icon: string }[] = [
       { id: 'dark', labelKey: 'settings.dark', icon: 'fa-moon' },
       { id: 'light', labelKey: 'settings.light', icon: 'fa-sun' },
-      { id: 'default', labelKey: 'settings.default', icon: 'fa-star' },
-      { id: 'monochrome', labelKey: 'settings.monochrome', icon: 'fa-palette' },
   ];
 
   return (
