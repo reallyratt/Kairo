@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppContext, useTranslation } from '../context/AppContext';
 import { TEvent, TCalendar, TCalendarCategory } from '../types';
 import Modal from '../components/Modal';
-import Header from '../components/Header';
 import { COLORS } from '../constants';
 import CustomSelect from '../components/CustomSelect';
 import { toYYYYMMDD, dateFromYYYYMMDD } from '../utils';
@@ -480,13 +479,51 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
         );
     };
 
-    const handleMove = (index: number, direction: -1 | 1) => {
-        const newIndex = index + direction;
-        if (newIndex < 0 || newIndex >= managedItems.length) return;
+    const getBlockRange = (index: number): { start: number, end: number } => {
+        const item = managedItems[index];
+        if (item.type === 'calendar') {
+            return { start: index, end: index };
+        }
 
+        // It's a category, find its calendars.
+        // The list is constructed so that a category is followed by its calendars.
+        let end = index;
+        for (let i = index + 1; i < managedItems.length; i++) {
+            const currentItem = managedItems[i];
+            if (currentItem.type === 'category') {
+                break; // Next category found, so this block ends.
+            }
+            end = i; // This item is a calendar belonging to the current category block.
+        }
+        return { start: index, end };
+    };
+
+    const handleMove = (index: number, direction: -1 | 1) => {
         const itemsCopy = [...managedItems];
-        [itemsCopy[index], itemsCopy[newIndex]] = [itemsCopy[newIndex], itemsCopy[index]]; // Swap
-        updateGlobalState(itemsCopy);
+        
+        if (direction === -1) { // Move Up
+            if (index === 0) return;
+            const blockToMoveUp = getBlockRange(index);
+            const blockToSwapWith = getBlockRange(blockToMoveUp.start - 1);
+
+            const itemsToMove = itemsCopy.splice(blockToMoveUp.start, blockToMoveUp.end - blockToMoveUp.start + 1);
+            itemsCopy.splice(blockToSwapWith.start, 0, ...itemsToMove);
+
+            updateGlobalState(itemsCopy);
+
+        } else { // Move Down
+            const blockToMoveDown = getBlockRange(index);
+            if (blockToMoveDown.end >= managedItems.length - 1) return;
+            
+            const blockToSwapWith = getBlockRange(blockToMoveDown.end + 1);
+            
+            const itemsToMove = itemsCopy.splice(blockToMoveDown.start, blockToMoveDown.end - blockToMoveDown.start + 1);
+            // The new insertion index needs to account for the removed items.
+            const insertionIndex = (blockToSwapWith.end - itemsToMove.length + 1);
+            itemsCopy.splice(insertionIndex, 0, ...itemsToMove);
+            
+            updateGlobalState(itemsCopy);
+        }
     };
 
     const handleUncategorize = (index: number) => {
@@ -923,8 +960,6 @@ function CalendarPage() {
 
   return (
     <div className="pb-10">
-      <Header titleKey="header.calendar" />
-
       <div className="px-4 pt-4 space-y-6">
           {/* --- Calendar Box --- */}
           <div className="rounded-2xl p-4 shadow-lg" style={{backgroundColor: 'var(--bg-secondary)'}}>
@@ -953,10 +988,10 @@ function CalendarPage() {
                           const dayEvents = eventsByDay.get(dateKey) || [];
 
                           return (
-                              <div key={date.toString()} className={`aspect-square rounded-lg p-1 flex flex-col items-center justify-start cursor-pointer transition-all duration-150 ${isSelected ? 'scale-105' : ''}`} style={{backgroundColor: isSelected ? 'var(--accent-primary)' : 'transparent', opacity: isSelected ? 0.5 : 1}} onClick={() => handleDateClick(date)}>
-                                  <span className={`font-bold text-sm mb-1 ${isToday ? 'bg-fuchsia-500 text-slate-50 rounded-full w-6 h-6 flex items-center justify-center' : ''}`} style={{
-                                    backgroundColor: isToday ? 'var(--accent-primary)' : 'transparent',
-                                    color: isToday ? 'var(--accent-text)' : isCurrentMonth ? 'var(--text-primary)' : 'var(--text-tertiary)'
+                              <div key={date.toString()} className={`aspect-square rounded-lg p-1 flex flex-col items-center justify-start cursor-pointer transition-all duration-150 ${isSelected ? 'scale-105' : ''}`} style={{backgroundColor: isSelected ? 'var(--accent-primary)' : 'transparent'}} onClick={() => handleDateClick(date)}>
+                                  <span className={`font-bold text-sm mb-1 ${isToday && !isSelected ? 'bg-fuchsia-500 text-slate-50 rounded-full w-6 h-6 flex items-center justify-center' : ''}`} style={{
+                                    backgroundColor: isToday && !isSelected ? 'var(--accent-primary)' : isSelected ? 'var(--accent-primary)' : 'transparent',
+                                    color: isSelected ? 'var(--accent-text)' : isToday ? 'var(--accent-text)' : isCurrentMonth ? 'var(--text-primary)' : 'var(--text-tertiary)'
                                   }}>
                                       {date.getDate()}
                                   </span>

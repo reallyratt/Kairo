@@ -8,6 +8,7 @@ import NotesPage from './pages/NotesPage';
 import AboutOverlay from './components/AboutOverlay';
 import DataOverlay from './components/DataOverlay';
 import SettingsOverlay from './components/SettingsOverlay';
+import Header from './components/Header';
 
 // --- Floating Action Button Component ---
 const FloatingActionButton: React.FC<{ isVisible: boolean; onClick: () => void }> = ({ isVisible, onClick }) => {
@@ -112,30 +113,23 @@ const AppContent = () => {
 
   // --- Page Transition Logic ---
   const [transitionClass, setTransitionClass] = useState('');
-  const prevPathRef = useRef(location.pathname);
 
   useEffect(() => {
-      const oldIndex = pageOrder.indexOf(prevPathRef.current);
-      const newIndex = pageOrder.indexOf(location.pathname);
-
-      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
-          if (newIndex > oldIndex) { // Navigated right (e.g., calendar -> notes)
-              setTransitionClass('animate-slide-in-left');
-          } else { // Navigated left (e.g., calendar -> todo)
-              setTransitionClass('animate-slide-in-right');
-          }
-      } else {
-          setTransitionClass('animate-view-in');
-      }
-
-      prevPathRef.current = location.pathname;
-
-      const timer = setTimeout(() => setTransitionClass(''), 300);
+      setTransitionClass('animate-cross-fade-in');
+      const timer = setTimeout(() => setTransitionClass(''), 250); // Match animation duration
       return () => clearTimeout(timer);
   }, [location.pathname]);
 
+  const pageTitleKeys: { [key: string]: string } = {
+    '/todo': 'header.todo',
+    '/calendar': 'header.calendar',
+    '/notes': 'header.notes',
+  };
+  const currentTitleKey = pageTitleKeys[location.pathname] || 'header.calendar';
+
   return (
     <div className="flex flex-col h-screen font-sans max-w-md mx-auto shadow-2xl overflow-x-hidden" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', boxShadow: `0 0 30px 5px var(--shadow-color)`}}>
+      <Header titleKey={currentTitleKey} />
       <main 
         ref={mainRef} 
         className={`flex-grow overflow-y-auto pb-24 ${transitionClass}`}

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useAppContext, useTranslation } from '../context/AppContext';
 import { TNote, TTag, TFolder } from '../types';
-import Header from '../components/Header';
 import CustomSelect from '../components/CustomSelect';
 import { COLORS } from '../constants';
 import Modal from '../components/Modal';
@@ -419,7 +418,6 @@ function NotesPage() {
 
   return (
     <div>
-      <Header titleKey="header.notes" />
       <div className="p-4 space-y-4">
         <div className="space-y-4">
             <CustomSelect options={folderOptions} value={selectedFolderId} onChange={setSelectedFolderId} />

@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
 import { TTask, TEvent, Urgency, TCalendar, TCalendarCategory } from '../types';
-import Header from '../components/Header';
 import { dateFromYYYYMMDD } from '../utils';
 import TaskFormModal from '../components/TaskFormModal';
 import CustomSelect from '../components/CustomSelect';
@@ -299,7 +298,6 @@ function TodoPage() {
 
   return (
     <div className="pb-20">
-      <Header titleKey="header.todo" />
       <div className="p-4 space-y-4">
         <div className="grid grid-cols-2 gap-2">
             <CustomSelect 
