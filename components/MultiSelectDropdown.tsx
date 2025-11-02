@@ -85,7 +85,7 @@ const MultiSelectDropdown: React.FC<MultiSelectDropdownProps> = ({ options, sele
         <i className={`fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200 ${isOpen && !isAnimatingOut ? 'transform rotate-180' : ''}`}></i>
       </button>
       {isOpen && (
-        <div className={`absolute z-10 mt-1 w-full rounded-lg shadow-lg max-h-60 overflow-auto ${animationClass}`} style={{backgroundColor: 'var(--bg-quaternary)'}}>
+        <div className={`absolute z-40 mt-1 w-full rounded-lg shadow-lg max-h-60 overflow-auto ${animationClass}`} style={{backgroundColor: 'var(--bg-quaternary)'}}>
           <ul>
             {options.map(option => (
               <li

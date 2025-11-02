@@ -343,7 +343,13 @@ const NoteEditor: React.FC<NoteEditorProps> = ({ noteToEdit, activeFolderId, onS
             </div>
             <div className="flex gap-2 pt-2">{noteToEdit && <button onClick={() => setShowConfirmDelete(true)} className="btn btn-danger btn-icon" aria-label={t('notes.delete')}><i className="fa-solid fa-trash"></i></button>}<button onClick={handleSave} disabled={!hasChanges} className="flex-grow btn btn-primary"><i className="fa-solid fa-check text-lg"></i></button></div>
         </footer>
-        <Modal isOpen={showConfirmCancel} onClose={() => setShowConfirmCancel(false)} title={t('notes.confirmCancelTitle')}><p className="mb-4 text-center" style={{color: 'var(--text-secondary)'}}>{t('notes.confirmCancelMessage')}</p><div className="pt-2"><button onClick={onCancel} className="w-full btn btn-danger">{t('notes.confirmCancelDiscard')}</button></div></Modal>
+        <Modal isOpen={showConfirmCancel} onClose={() => setShowConfirmCancel(false)} title={t('notes.confirmCancelTitle')} showCloseButton={false}>
+            <p className="mb-4 text-center" style={{color: 'var(--text-secondary)'}}>{t('notes.confirmCancelMessage')}</p>
+            <div className="flex gap-2 pt-2">
+                <button onClick={() => setShowConfirmCancel(false)} className="flex-1 btn btn-secondary">{t('calendar.keepEditing')}</button>
+                <button onClick={onCancel} className="flex-1 btn btn-danger">{t('calendar.discard')}</button>
+            </div>
+        </Modal>
         <Modal isOpen={showConfirmDelete} onClose={() => setShowConfirmDelete(false)} title={t('notes.confirmDeleteTitle')}><p className="mb-4 text-center" style={{color: 'var(--text-secondary)'}}>{t('notes.confirmDeleteMessage')}</p><div className="pt-2"><button onClick={() => { if (noteToEdit) onDelete(noteToEdit.id); }} className="w-full btn btn-danger">{t('notes.confirmDeleteConfirm')}</button></div></Modal>
         <Modal isOpen={isManageTagsOpen} onClose={() => setIsManageTagsOpen(false)} title={t('notes.manageTags')}><form onSubmit={(e) => { e.preventDefault(); handleCreateTag(); }} className="flex gap-2"><input type="text" value={newTagName} onChange={e => setNewTagName(e.target.value)} placeholder={t('notes.newTagPlaceholder')} className="form-input flex-grow" /><button type="submit" className="btn btn-primary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button></form></Modal>
         <Modal isOpen={isManageFoldersOpen} onClose={() => setIsManageFoldersOpen(false)} title={t('notes.manageFolders')}><form onSubmit={(e) => { e.preventDefault(); handleCreateFolder(); }} className="flex gap-2"><input type="text" value={newFolderName} onChange={e => setNewFolderName(e.target.value)} placeholder={t('notes.newFolderPlaceholder')} className="form-input flex-grow" /><button type="submit" className="btn btn-primary btn-icon flex-shrink-0"><i className="fa-solid fa-plus"></i></button></form></Modal>

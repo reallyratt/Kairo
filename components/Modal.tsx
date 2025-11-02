@@ -5,9 +5,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: ReactNode;
+  showCloseButton?: boolean;
 }
 
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, showCloseButton = true }) => {
   if (!isOpen) return null;
 
   return (
@@ -21,13 +22,15 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
       >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-fuchsia-400" style={{ color: 'var(--accent-primary)'}}>{title}</h2>
-          <button
-            onClick={onClose}
-            className="transition-all text-2xl transform hover:scale-125 active:scale-95"
-            style={{ color: 'var(--text-secondary)'}}
-          >
-            &times;
-          </button>
+          {showCloseButton && (
+            <button
+              onClick={onClose}
+              className="transition-all text-2xl transform hover:scale-125 active:scale-95"
+              style={{ color: 'var(--text-secondary)'}}
+            >
+              &times;
+            </button>
+          )}
         </div>
         <div>{children}</div>
       </div>

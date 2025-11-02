@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useAppContext, useTranslation } from '../context/AppContext';
 import { TTask, TEvent, Urgency, TCalendar, TCalendarCategory, TTaskGroup } from '../types';
@@ -31,8 +32,6 @@ const TaskItem: React.FC<{ task: TTask; calendars: TCalendar[]; onToggle: (id: s
 
   return (
     <div className={`flex items-start gap-3 p-2 rounded-lg transition-all duration-300 ease-in-out hover:bg-[var(--bg-tertiary)] ${task.completed ? 'opacity-50' : 'opacity-100'}`}>
-        <div className="w-1.5 self-stretch shrink-0 rounded-full" style={{backgroundColor: task.color}}></div>
-        
         <div className="flex-grow cursor-pointer" onClick={() => onEdit(task)}>
             <div className="flex items-center justify-between gap-2">
                 <span className={`transition-all duration-300 font-medium ${task.completed ? 'line-through' : ''}`} style={{color: task.completed ? 'var(--text-tertiary)' : 'var(--text-primary)'}}>
@@ -49,15 +48,12 @@ const TaskItem: React.FC<{ task: TTask; calendars: TCalendar[]; onToggle: (id: s
                 </div>
             </div>
 
-            {calendar && (
-                <p className="text-xs mt-1 flex items-center gap-1.5" style={{color: calendar.color, opacity: 0.8}}>
-                    <i className="fa-solid fa-calendar-days text-xs"></i>
-                    <span>{calendar.name}</span>
-                </p>
-            )}
-
             {task.description && <p className="text-sm mt-1" style={{color: 'var(--text-secondary)'}}>{task.description}</p>}
             
+            <div className="flex items-center gap-2 mt-2 text-xs">
+                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: task.color }}></div>
+            </div>
+
             {task.dueDate && 
                 <p className="text-xs font-mono mt-1" style={{color: 'var(--text-tertiary)'}}>
                     Due: {dateFromYYYYMMDD(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -218,10 +214,6 @@ function TodoPage() {
     return sorted;
   }, [sortBy, uncheckedTasks]);
 
-  const sortedCheckedTasks = useMemo(() => {
-    return [...checkedTasks].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-  }, [checkedTasks]);
-
   const groupAndSortTasks = (tasksToProcess: TTask[]): { id: string; event: TEvent | null; taskGroup: TTaskGroup | null; tasks: TTask[] }[] => {
     type TaskGroupContainer = { id: string; event: TEvent | null; taskGroup: TTaskGroup | null; tasks: TTask[] };
     const groups: { [key: string]: TaskGroupContainer } = {};
@@ -247,6 +239,7 @@ function TodoPage() {
   };
 
   const groupedUncheckedTasks = useMemo(() => groupAndSortTasks(uncheckedTasks), [uncheckedTasks, events, taskGroups]);
+  const groupedCheckedTasks = useMemo(() => groupAndSortTasks(checkedTasks), [checkedTasks, events, taskGroups]);
   
   const calendarOptions = useMemo(() => {
     const options: any[] = [{ value: 'overview', label: 'Overview', className: 'text-lg font-bold py-1' }];
@@ -291,7 +284,7 @@ function TodoPage() {
   }, [calendars, calendarOrder, calendarCategories, calendarCategoryOrder]);
   
   const sortOptions = [
-    { value: 'default', label: t('todo.defaultGrouping') },
+    { value: 'default', label: t('todo.default') },
     { value: 'date', label: t('todo.sortByDate') },
     { value: 'alpha', label: t('todo.sortByName') },
     { value: 'urgency', label: t('todo.sortByUrgency') },
@@ -313,6 +306,7 @@ function TodoPage() {
             headerColor = selectedCalendarId === 'overview' ? (calendars.find(c => c.id === event.calendarId)?.color || event.color) : event.color;
         } else if (taskGroup) {
             headerText = taskGroup.name;
+            headerColor = taskGroup.color || 'var(--text-primary)';
         }
 
         return (
@@ -386,7 +380,7 @@ function TodoPage() {
             </div>
         </div>
 
-        {sortedCheckedTasks.length > 0 && (
+        {checkedTasks.length > 0 && (
             <div className="space-y-4">
                  <div className="w-full h-px my-4" style={{backgroundColor: 'var(--border-color)'}}></div>
                 <div className="flex justify-between items-center">
@@ -401,9 +395,9 @@ function TodoPage() {
                     </button>
                 </div>
                  <div className={`transition-all duration-500 ease-in-out overflow-hidden ${collapsedSections.has('completed') ? 'max-h-0 opacity-0' : 'max-h-[5000px] opacity-100'}`}>
-                  <div className="rounded-xl p-4 space-y-1" style={{backgroundColor: 'var(--bg-secondary)'}}>
-                      {sortedCheckedTasks.map(task => <TaskItem key={task.id} task={task} calendars={calendars} onToggle={toggleTask} onEdit={openEditTaskModal} />)}
-                  </div>
+                    <div className="space-y-4">
+                      {renderTaskGroups(groupedCheckedTasks)}
+                    </div>
                 </div>
             </div>
         )}

@@ -22,7 +22,7 @@ export interface TNote {
 }
 
 export interface TCalendarCategory {
-  id: string;
+  id:string;
   name: string;
 }
 
@@ -54,6 +54,7 @@ export enum Urgency {
 export interface TTaskGroup {
   id: string;
   name: string;
+  color?: string;
 }
 
 export interface TTask {

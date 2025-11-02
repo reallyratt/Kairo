@@ -5,8 +5,6 @@ import BottomNav from './components/BottomNav';
 import CalendarPage from './pages/CalendarPage';
 import TodoPage from './pages/TodoPage';
 import NotesPage from './pages/NotesPage';
-import AboutOverlay from './components/AboutOverlay';
-import DataOverlay from './components/DataOverlay';
 import SettingsOverlay from './components/SettingsOverlay';
 import Header from './components/Header';
 
@@ -36,7 +34,7 @@ const FloatingActionButton: React.FC<{ isVisible: boolean; onClick: () => void }
 
 
 const AppContent = () => {
-  const { isAboutOpen, setIsAboutOpen, isDataOpen, setIsDataOpen, isSettingsOpen, setIsSettingsOpen, setActiveAction } = useAppContext();
+  const { isSettingsOpen, setIsSettingsOpen, setActiveAction } = useAppContext();
   const mainRef = useRef<HTMLElement>(null);
   const lastScrollY = useRef(0);
   const [isFabVisible, setIsFabVisible] = useState(true);
@@ -145,8 +143,6 @@ const AppContent = () => {
       </main>
       <FloatingActionButton isVisible={isFabVisible} onClick={handleFabClick} />
       <BottomNav />
-      <AboutOverlay isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
-      <DataOverlay isOpen={isDataOpen} onClose={() => setIsDataOpen(false)} />
       <SettingsOverlay isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </div>
   );

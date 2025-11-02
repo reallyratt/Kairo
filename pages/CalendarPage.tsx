@@ -158,20 +158,20 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
   
   const getTitle = () => {
     switch(view) {
-        case 'confirm_delete': return isRecurring ? 'Delete Recurring Event' : 'Are you sure?';
-        case 'confirm_close': return 'Unsaved Changes';
-        case 'confirm_save': return 'Save Recurring Event';
+        case 'confirm_delete': return isRecurring ? t('calendar.confirmDeleteRecurringTitle') : 'Are you sure?';
+        case 'confirm_close': return t('calendar.confirmUnsavedTitle');
+        case 'confirm_save': return t('calendar.confirmSaveRecurringTitle');
         case 'form':
-        default: return isEditing ? 'Edit Event' : t('calendar.createEvent');
+        default: return isEditing ? t('calendar.editEvent') : t('calendar.createEvent');
     }
   }
 
   const repetitionOptions = [
-    { value: 'none', label: 'Does not repeat' },
-    { value: 'daily', label: 'Every Day' },
-    { value: 'weekly', label: 'Every Week' },
-    { value: 'monthly', label: 'Every Month' },
-    { value: 'yearly', label: 'Every Year' },
+    { value: 'none', label: t('calendar.doesNotRepeat') },
+    { value: 'daily', label: t('calendar.everyDay') },
+    { value: 'weekly', label: t('calendar.everyWeek') },
+    { value: 'monthly', label: t('calendar.everyMonth') },
+    { value: 'yearly', label: t('calendar.everyYear') },
   ];
   
   const calendarOptions = useMemo(() => {
@@ -237,14 +237,24 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
             <div className="flex items-center gap-3">
                 <i className="fa-solid fa-pen-nib w-6 text-center text-lg" style={{color: 'var(--text-secondary)'}}></i>
                 <div className="flex-grow">
-                    <input id="eventName" type="text" placeholder="Event Name (Required)" value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
+                    <input id="eventName" type="text" placeholder={t('calendar.eventNamePlaceholder')} value={formData.name || ''} onChange={e => handleChange('name', e.target.value)} className="form-input" required />
                     {errors.name && <p className="text-xs mt-1" style={{color: 'var(--danger-primary)'}}>{errors.name}</p>}
                 </div>
             </div>
              <div className="flex items-start gap-3">
                 <i className="fa-solid fa-paragraph w-6 text-center text-lg pt-2" style={{color: 'var(--text-secondary)'}}></i>
                 <div className="flex-grow">
-                    <textarea id="description" placeholder="Description (Optional)" value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-24 resize-none"></textarea>
+                    <textarea id="description" placeholder={t('calendar.descriptionPlaceholder')} value={formData.description || ''} onChange={e => handleChange('description', e.target.value)} className="form-input h-24 resize-none"></textarea>
+                </div>
+            </div>
+             <div className="flex items-start gap-3">
+                <i className="fa-solid fa-palette w-6 text-center text-lg pt-1" style={{color: 'var(--text-secondary)'}}></i>
+                <div className="flex-grow">
+                    <div className="grid grid-cols-7 gap-2">
+                        {COLORS.map(c => (
+                            <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active-scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                        ))}
+                    </div>
                 </div>
             </div>
              <div className="flex items-center gap-3">
@@ -272,16 +282,6 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
                   </div>
               </div>
             </div>
-             <div className="flex items-start gap-3">
-                <i className="fa-solid fa-palette w-6 text-center text-lg pt-1" style={{color: 'var(--text-secondary)'}}></i>
-                <div className="flex-grow">
-                    <div className="grid grid-cols-7 gap-2">
-                        {COLORS.map(c => (
-                            <button type="button" key={c} onClick={() => handleChange('color', c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active-scale-95 ${formData.color === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
-                        ))}
-                    </div>
-                </div>
-            </div>
             <div className="flex gap-2 pt-2">
               {isEditing && (
                   <button type="button" onClick={() => changeView('confirm_delete')} className="btn btn-danger btn-icon" aria-label="Delete"><i className="fa-solid fa-trash"></i></button>
@@ -293,11 +293,11 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
 
         {view === 'confirm_save' && (
           <div className="space-y-4">
-            <p className="text-slate-300 mb-4 text-center" style={{color: 'var(--text-secondary)'}}>How would you like to save your changes?</p>
+            <p className="text-slate-300 mb-4 text-center" style={{color: 'var(--text-secondary)'}}>{t('calendar.saveRecurringPrompt')}</p>
             <div className="space-y-2">
-              <button type="button" onClick={() => handleSaveWithScope('single')} className="w-full btn btn-secondary">This event only</button>
-              <button type="button" onClick={() => handleSaveWithScope('future')} className="w-full btn btn-secondary">This and following events</button>
-              <button type="button" onClick={() => handleSaveWithScope('all')} className="w-full btn btn-secondary">All events in series</button>
+              <button type="button" onClick={() => handleSaveWithScope('single')} className="w-full btn btn-secondary">{t('calendar.saveThisOnly')}</button>
+              <button type="button" onClick={() => handleSaveWithScope('future')} className="w-full btn btn-secondary">{t('calendar.saveThisAndFuture')}</button>
+              <button type="button" onClick={() => handleSaveWithScope('all')} className="w-full btn btn-secondary">{t('calendar.saveAllInSeries')}</button>
             </div>
           </div>
         )}
@@ -306,18 +306,18 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
           <div className="space-y-4">
               {isRecurring ? (
                   <div>
-                      <p className="text-slate-300 mb-4 text-center" style={{color: 'var(--text-secondary)'}}>This is a recurring event. Which instances do you want to delete?</p>
+                      <p className="text-slate-300 mb-4 text-center" style={{color: 'var(--text-secondary)'}}>{t('calendar.deleteRecurringPrompt')}</p>
                       <div className="space-y-2">
-                          <button type="button" onClick={() => handleDelete('single')} className="w-full btn btn-secondary">This event only</button>
-                          <button type="button" onClick={() => handleDelete('future')} className="w-full btn btn-secondary">This and following events</button>
-                          <button type="button" onClick={() => handleDelete('all')} className="w-full btn btn-secondary">All events in series</button>
+                          <button type="button" onClick={() => handleDelete('single')} className="w-full btn btn-secondary">{t('calendar.deleteThisOnly')}</button>
+                          <button type="button" onClick={() => handleDelete('future')} className="w-full btn btn-secondary">{t('calendar.deleteThisAndFuture')}</button>
+                          <button type="button" onClick={() => handleDelete('all')} className="w-full btn btn-secondary">{t('calendar.deleteAllInSeries')}</button>
                       </div>
                   </div>
               ) : (
                   <div className="text-center">
-                      <p className="text-slate-300" style={{color: 'var(--text-secondary)'}}>Deleting an event will also remove any associated tasks.</p>
+                      <p className="text-slate-300" style={{color: 'var(--text-secondary)'}}>{t('calendar.confirmDeleteEventMessage')}</p>
                       <div className="pt-4">
-                          <button type="button" onClick={() => handleDelete('single')} className="w-full btn btn-danger">Yes</button>
+                          <button type="button" onClick={() => handleDelete('single')} className="w-full btn btn-danger">{t('common.yes')}</button>
                       </div>
                   </div>
               )}
@@ -325,13 +325,15 @@ const EventFormModal: React.FC<EventFormModalProps> = ({ isOpen, onClose, onSave
         )}
 
         {view === 'confirm_close' && (
-          <div className="space-y-4 text-center">
-              <p className="text-slate-300" style={{color: 'var(--text-secondary)'}}>You have unsaved changes. Are you sure you want to discard them?</p>
-              <div className="flex gap-2 pt-2">
-                  <button type="button" onClick={() => changeView('form')} className="flex-1 btn btn-secondary">Keep Editing</button>
-                  <button type="button" onClick={onClose} className="flex-1 btn btn-danger">Discard</button>
-              </div>
-          </div>
+          <Modal isOpen={isOpen} onClose={() => setView('form')} title={t('calendar.confirmUnsavedTitle')} showCloseButton={false}>
+            <div className="space-y-4 text-center">
+                <p className="text-slate-300" style={{color: 'var(--text-secondary)'}}>{t('calendar.confirmUnsavedMessage')}</p>
+                <div className="flex gap-2 pt-2">
+                    <button type="button" onClick={() => changeView('form')} className="flex-1 btn btn-secondary">{t('calendar.keepEditing')}</button>
+                    <button type="button" onClick={onClose} className="flex-1 btn btn-danger">{t('calendar.discard')}</button>
+                </div>
+            </div>
+          </Modal>
         )}
       </div>
     </Modal>
@@ -640,7 +642,7 @@ const ManageModal: React.FC<{isOpen: boolean, onClose: () => void;}> = ({ isOpen
                             
                             <div className="grid grid-cols-7 gap-2 px-2">
                                 {COLORS.map(c => (
-                                    <button type="button" key={c} onClick={() => setNewCalendarColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active-scale-95 ${newCalendarColor === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
+                                    <button type="button" key={c} onClick={() => setNewCalendarColor(c)} className={`w-7 h-7 rounded-full transition-all transform hover:scale-110 active:scale-95 ${newCalendarColor === c ? 'ring-2 ring-offset-2 ring-[var(--accent-secondary)]' : ''}`} style={{ backgroundColor: c, '--tw-ring-offset-color': 'var(--bg-secondary)' } as React.CSSProperties}></button>
                                 ))}
                             </div>
                             <div className="flex gap-2">
